@@ -234,6 +234,7 @@ def party_turn (actor, encounter_state):
     actor.feeling (encounter_state)
 
     print (f"{actor.name}'s turn")
+    print(f"Stamina: {actor.current_stamina}/{actor.stamina} | Fortune: {actor.current_fortune}/{actor.fortune}")
     status_text = "Status: "
     for key, value in encounter_state["actors"][actor].items():
         if value == True:
@@ -258,6 +259,7 @@ def party_turn (actor, encounter_state):
 
 def enemy_turn (actor, encounter_state):
     print (f"{actor.name}'s turn")
+    print(f"Stamina: {actor.current_stamina}/{actor.stamina} | Fortune: {actor.current_fortune}/{actor.fortune}")
     status_text = "Status: "
     for key, value in encounter_state["actors"][actor].items():
         if value == True:

@@ -335,7 +335,7 @@ def create_party():
         premade_characters = {"Valeria": valeria, "Sonja": sonja, "Bosh": bosh, "Thoth": thoth}
         
         h_encounter.report("Select pre-made characters for your party:")
-        while len(party) < 3:
+        while len(party) < 4:
             available_characters = {k: v for k, v in premade_characters.items() if v not in party}
             
             if not available_characters:
@@ -440,11 +440,14 @@ def create_party():
         selected_consumables.append(consumable)
         h_encounter.report(f"{choice.title()} selected.")
     
-    # Distribute consumables to party members
-    for idx, consumable in enumerate(selected_consumables):
-        if idx < len(party):
-            party[idx].inventory.add_item(consumable)
-            h_encounter.report(f"{party[idx].name} receives {consumable.name}.")
+    # Distribute consumables to shared party inventory
+    party_inventory = Inventory()
+    for consumable in selected_consumables:
+        party_inventory.add_item(consumable)
+        h_encounter.report(f"{consumable.name} added to party inventory.")
+    
+    # Store the shared inventory with the party
+    party.inventory = party_inventory
 
     return party
 
