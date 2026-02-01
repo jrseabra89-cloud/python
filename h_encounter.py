@@ -4,13 +4,15 @@ def report (message):
     print ("- - - - - - - - - -")
     print (message)
     print ("- - - - - - - - - -")
-    input("")
+    # non-blocking by default (set pause=True if interactive pause desired)
+    return
 
 def major_report (message):
     print ("* * * * * * * * * *")
     print (message)
     print ("* * * * * * * * * *")
-    input("")
+    # non-blocking by default
+    return
 
 def run_encounter (scene, party):
 
@@ -40,7 +42,7 @@ def new_encounter (scene, party):
             "done" : False,
             "KO" : False,
             "melee" : False,
-            "momemtum" : False,
+            "momentum" : False,
             "guard" : False,
             "block" : False,
             "speed" : "normal",
@@ -50,7 +52,7 @@ def new_encounter (scene, party):
             "pin" : False,
             "disable" : False,
             "enraged" : False
-            }
+        }
 
         if item in party:
             encounter_state["actors"][item]["party"] = True

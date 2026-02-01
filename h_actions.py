@@ -5,14 +5,16 @@ def stat_test (adder, difficulty):
 
     roll = random.randint(1,20)
     
-    if adder + roll > difficulty + 9:
-        result =  "success"
-    elif adder + roll > difficulty + 19:
+    # higher thresholds should be checked first (critical > success)
+    total = adder + roll
+    if total >= difficulty + 20:
         result = "critical"
+    elif total >= difficulty + 10:
+        result = "success"
     else:
         result = "failure"
 
-    h_encounter.report (f"{result} - {adder + roll} ({difficulty + 10})")
+    h_encounter.report(f"{result} - {total} ({difficulty + 10})")
     return result
 
 def choose_options (dictionary):
@@ -27,58 +29,64 @@ def choose_options (dictionary):
         text3 = getattr(dictionary[key], "description", "")
         print (text1+text2.center(19)+text3)
         options_index [options_counter] = key
+    if options_counter == 0:
+        return None
+
     try:
-        choice_index = int(input ("choose option."))
+        choice_index = int(input("choose option."))
     except ValueError:
-        action_choice_index = 1
-    
+        choice_index = 1
+
     if choice_index > options_counter:
         choice_index = options_counter
     elif choice_index < 1:
         choice_index = 1
 
-    choice = options_index [choice_index]
+    choice = options_index[choice_index]
 
     return dictionary[choice]
 
 
 def enemy_action_logic (possible_actions):
-
-    if "guard" in possible_actions:
-        choice = "guard"
-
-    if "skirmish" in possible_actions:
-        choice = "skirmish"
-
+    # prefer melee fight, then skirmish, then guard; fallback to first available
+    choice = None
     if "fight" in possible_actions:
         choice = "fight"
-    
-    return possible_actions[choice]
+    elif "skirmish" in possible_actions:
+        choice = "skirmish"
+    elif "guard" in possible_actions:
+        choice = "guard"
+
+    if choice is None:
+        # return first available action function or None
+        return next(iter(possible_actions.values())) if possible_actions else None
+
+    return possible_actions.get(choice)
 
 
 def filter_actions (actor, encounter_state, action_dict):
+    # work on a shallow copy to avoid mutating the original dict
+    action_options = dict(action_dict) if action_dict is not None else {}
 
-    action_options = action_dict
+    if encounter_state["actors"][actor].get("disable") == True:
+        action_options.pop("skirmish", None)
+        action_options.pop("fight", None)
+        action_options.pop("smash", None)
+        action_options.pop("trip", None)
+        action_options.pop("stab", None)
 
-    if encounter_state["actors"][actor]["disable"] == True:
-        del action_options["skirmish"]
-        del action_options["fight"]
-        del action_options["smash"]
-        del action_options["trip"]
-        del action_options["stab"]
+    if encounter_state["actors"][actor].get("melee") == True:
+        action_options.pop("skirmish", None)
+        action_options.pop("block", None)
 
-    if encounter_state["actors"][actor]["melee"] == True:
-        del action_options["skirmish"]
-        del action_options["block"]
-
-    if encounter_state["actors"][actor]["melee"] == False:
-        del action_options["retreat"]
-        if encounter_state["actors"][actor]["pin"] == True:
-            del action_options["fight"]
-            del action_options["smash"]
-            del action_options["trip"]
-            del action_options["stab"]
-            del action_options["block"]
+    if encounter_state["actors"][actor].get("melee") == False:
+        action_options.pop("retreat", None)
+        if encounter_state["actors"][actor].get("pin") == True:
+            action_options.pop("fight", None)
+            action_options.pop("smash", None)
+            action_options.pop("trip", None)
+            action_options.pop("stab", None)
+            action_options.pop("block", None)
 
     return action_options
 
@@ -100,17 +108,20 @@ def choose_target (dictionary):
         print (text1+text2.center(19)+status_text)
         options_index [options_counter] = key
 
+    if options_counter == 0:
+        return None
+
     try:
-        choice_index = int(input ("choose option."))
+        choice_index = int(input("choose option."))
     except ValueError:
-        action_choice_index = 1
-    
+        choice_index = 1
+
     if choice_index > options_counter:
         choice_index = options_counter
     elif choice_index < 1:
         choice_index = 1
 
-    choice = options_index [choice_index]
+    choice = options_index[choice_index]
 
     return choice
 
@@ -123,10 +134,11 @@ def logic_target (dictionary):
         options_counter += 1
         options_index [options_counter] = key
 
-    choice_index = random.randint (1, options_counter)
+    if options_counter == 0:
+        return None
 
-    choice = options_index [choice_index]
-
+    choice_index = random.randint(1, options_counter)
+    choice = options_index[choice_index]
     return choice
 
 def filter_targets (actor, encounter_state):
@@ -151,7 +163,10 @@ def get_target (actor, encounter_state):
 
     available_targets = filter_targets(actor, encounter_state)
 
-    if actor.logic != None:
+    if not available_targets:
+        return None
+
+    if actor.logic is not None:
         target = choose_target(available_targets)
     else:
         target = next(iter(available_targets))
@@ -163,11 +178,11 @@ def check_combat_modifiers (actor, encounter_state, target):
     adder = actor.skill
     difficulty = target.defense
 
-    if encounter_state["actors"][actor]["momemtum"] == True:
+    if encounter_state["actors"][actor]["momentum"] == True:
         if "reach" not in target.features:
             adder += 4
         else:
-            h_encounter.report (f"{target.name} halts {actor.name}'s momemtum.")
+            h_encounter.report (f"{target.name} halts {actor.name}'s momentum.")
     
     if encounter_state["actors"][actor]["daze"] == True:
         adder -= 4    
@@ -211,17 +226,17 @@ def fight (actor, encounter_state):
 
     if result == "success":
         damage (target, encounter_state, attack_damage, target.current_reduction, actor.damage_type)
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
 
     elif result == "critical":
         damage (target, encounter_state, attack_damage+4, target.current_reduction, actor.damage_type)
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
 
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
-        encounter_state["actors"][actor]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = False
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -255,19 +270,19 @@ def smash (actor, encounter_state):
 
     if result == "success":
         damage (target, encounter_state, attack_damage+2, target.current_reduction, actor.damage_type)
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
         cause_daze (target, encounter_state)
 
     elif result == "critical":
         damage (target, encounter_state, attack_damage+6, target.current_reduction, actor.damage_type)
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
         cause_daze (target, encounter_state)
 
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
-        encounter_state["actors"][actor]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = False
         cause_vulnerable (actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
@@ -302,19 +317,19 @@ def hack_and_slash (actor, encounter_state):
 
     if result == "success":
         damage (target, encounter_state, attack_damage, target.current_reduction, actor.damage_type)
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
         cause_vulnerable (actor, encounter_state)
 
     elif result == "critical":
         damage (target, encounter_state, attack_damage+4, target.current_reduction, actor.damage_type)
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
         cause_vulnerable (actor, encounter_state)
 
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
-        encounter_state["actors"][actor]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = False
         cause_vulnerable (actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
@@ -344,19 +359,19 @@ def trip (actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
         cause_daze (target, encounter_state)
 
     elif result == "critical":
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
         cause_daze (target, encounter_state)
         cause_disable (target, encounter_state)
 
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
-        encounter_state["actors"][actor]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = False
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -390,17 +405,17 @@ def stab (actor, encounter_state):
 
     if result == "success":
         damage (target, encounter_state, attack_damage + random.randint (1, 4), 0, "pierce")
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
 
     elif result == "critical":
         damage (target, encounter_state, attack_damage + 4, 0, "pierce")
-        encounter_state["actors"][actor]["momemtum"] = True
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
 
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
-        encounter_state["actors"][actor]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = False
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -418,7 +433,7 @@ def skirmish (actor, encounter_state):
 
     h_encounter.report (f"{actor.name} takes aims at {target.name} and attacks from a distance.")
 
-    encounter_state["actors"][actor]["momemtum"] = False
+    encounter_state["actors"][actor]["momentum"] = False
     
     adder, difficulty = check_combat_modifiers (actor, encounter_state, target)
 
@@ -426,17 +441,17 @@ def skirmish (actor, encounter_state):
 
     if result == "success":
         damage (target, encounter_state, attack_damage, target.current_reduction, "pierce")
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][target]["momentum"] = False
         cause_pin (target, encounter_state)
 
     elif result == "critical":
         damage (target, encounter_state, attack_damage+4, target.current_reduction, "pierce")
-        encounter_state["actors"][target]["momemtum"] = False
+        encounter_state["actors"][target]["momentum"] = False
         cause_pin (target, encounter_state)
 
     else:
         h_encounter.report (f"{actor.name} misses.")
-        encounter_state["actors"][actor]["momemtum"] = False
+        encounter_state["actors"][actor]["momentum"] = False
 
     return encounter_state
 
@@ -458,7 +473,7 @@ def block (actor, encounter_state):
 def retreat (actor, encounter_state):
 
     encounter_state["actors"][actor]["melee"] = False
-    encounter_state["actors"][actor]["momemtum"] = False
+    encounter_state["actors"][actor]["momentum"] = False
     h_encounter.report (f"{actor.name} retreats from melee.")
 
     return encounter_state
@@ -470,7 +485,7 @@ def swap_arms (actor, encounter_state):
         report (f"{actor.name} has no other weapons.")
         user_turn (item, side_A, side_B)
     
-    encounter_state["actors"][actor]["momemtum"] = False
+    encounter_state["actors"][actor]["momentum"] = False
 
     return encounter_state
 
@@ -541,11 +556,11 @@ def riposte_trigger (actor, encounter_state, target):
 
             if result == "success":
                 damage (actor, encounter_state, attack_damage, actor.current_reduction, target.damage_type)
-                encounter_state["actors"][actor]["momemtum"] = False
+                encounter_state["actors"][actor]["momentum"] = False
 
             elif result == "critical":
                 damage (actor, encounter_state, attack_damage+4, actor.current_reduction, target.damage_type)
-                encounter_state["actors"][actor]["momemtum"] = False
+                encounter_state["actors"][actor]["momentum"] = False
 
             else:
                 h_encounter.report (f"{target.name} misses.")

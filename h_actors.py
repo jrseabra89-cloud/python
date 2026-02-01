@@ -57,7 +57,8 @@ class Actor:
         print (f"{self.name}:")
         print (battlecry_message[randomizer])
         print ("< < < < < < < > > > > > > >")
-        input ("")
+        # no interactive pause
+        return
 
     def pain (self):
         randomizer = random.randint(0,3)
@@ -72,7 +73,8 @@ class Actor:
         print (f"{self.name}:")
         print (pain_message[randomizer])
         print ("< < < < < < < > > > > > > >")
-        input ("")
+        # no interactive pause
+        return
         
     def feeling (self, encounter_state):
         chance = random.randint (0,1)
@@ -101,6 +103,7 @@ class Actor:
                         f"{self.name} senses are alert."
                         ]
             h_encounter.report (f"{self.name}:\n{feeling_message[randomizer]}")
+            return
 
     def death (self, damage_type = "sharp"):
         randomizer = random.randint(0,3)
@@ -123,15 +126,17 @@ class Actor:
 
 
     def give_archetype (self, archetype):
-        
-        self.skill += archetype.skill
-        self.defense += archetype.skill
-        self.power += archetype.skill
-        self.fortune += archetype.skill
-        self.reduction += archetype.skill
-        self.insulation += archetype.skill
-        self.special_actions = archetype.archetype_actions
-        self.features += archetype.features
+        # add archetype's specific stats to the actor
+        self.stamina += getattr(archetype, 'stamina', 0)
+        self.skill += getattr(archetype, 'skill', 0)
+        self.defense += getattr(archetype, 'defense', 0)
+        self.power += getattr(archetype, 'power', 0)
+        self.fortune += getattr(archetype, 'fortune', 0)
+        self.reduction += getattr(archetype, 'reduction', 0)
+        self.insulation += getattr(archetype, 'insulation', 0)
+        self.special_actions = dict(archetype.archetype_actions)
+        # ensure features is a list and extend
+        self.features += list(archetype.features)
         self.archetype = archetype
 
 
@@ -141,21 +146,23 @@ class Actor:
             self.skill += arms.skill
             self.defense += arms.defense
             self.power += arms.power
-            self.damage = arms.damage_type
+            self.damage_type = arms.damage_type
             self.arms_slot1 = arms
             self.speed = arms.speed
             self.arms_actions = arms.arms_actions
-            self.features += arms.features
+            self.features += list(arms.features)
 
         else:
             self.skill -= self.arms_slot1.skill
             self.defense -= self.arms_slot1.defense
             self.power -= self.arms_slot1.power
-            self.damage = "blunt"
+            self.damage_type = "blunt"
             self.speed = "normal"
             self.arms_actions = {}
-            for item in self.arms_slot1.features:
-                self.features.remove(item)
+            # remove features safely
+            for item in getattr(self.arms_slot1, 'features', []):
+                if item in self.features:
+                    self.features.remove(item)
 
             self.arms_slot1 = None
             self.equip_weapons (arms)
@@ -201,8 +208,9 @@ class Actor:
             self.insulation -= self.headgear.insulation
             self.power -= self.headgear.power
 
-            for item in self.headgear.features:
-                self.features.remove(item)
+            for item in getattr(self.headgear, 'features', []):
+                if item in self.features:
+                    self.features.remove(item)
             
             self.headgear = None
 
@@ -422,7 +430,7 @@ black_hood.skill += 1
 black_hood.fortune -= 1
 
 flaming_topknot = Headgear ("flaming topknot", "resist pinning, defense -1.")
-flaming_topknot.features = "resist pinning"
+flaming_topknot.features = ["resist pin"]
 flaming_topknot.defense -= 1
 
 
