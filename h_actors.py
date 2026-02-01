@@ -239,6 +239,56 @@ class Actor:
         self.arms_slot2 = reserve
 
 
+class Minion(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        # Format matches Actor.battlecry: header, name, messages, footer
+        messages = [
+            "mE mInIoN, hUnGrY",
+            "SqUeAk wE gO",
+            "fOlLoW lEaDeR mAyBe",
+            "MaNy BiTeInGs",
+            "sMaLl tOoThS eVeRyWhErE",
+            "rUn rUn NO sToP",
+            "FoR sWaRm nOw!",
+            "wIn mAyBe nOt",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        for msg in messages:
+            print(msg)
+        print("< < < < < < < > > > > > > >")
+        return
+
+
+class Master(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        # Imposing, threatening multi-line battlecry for Master actors
+        threats = [
+            "Fall now; I will crush you.",
+            "I will break every bone you own.",
+            "No mercy, no respite.",
+            "Kneel or die beneath my shadow.",
+            "I will rip your ranks to pieces.",
+            "No plea will save your breath.",
+            "I will hunt you down, one by one.",
+            "This world ends when I command it.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        for line in threats:
+            print(line)
+        print("< < < < < < < > > > > > > >")
+        return
+
+
 # ------------------------------------------------------------------
 # Party
 # ------------------------------------------------------------------
@@ -515,10 +565,10 @@ archetype_list = {"gendarme": gendarme, "furioso": furioso}
 # ------------------------------------------------------------------
 
 
-minion = Actor("minion")
+minion = Minion("Skitter")
 minion.logic = "minion logic"
 minion.speed = "slow"
-grunt = Actor("grunt")
+grunt = Minion("Chitter")
 grunt.logic = "grunt logic"
 nemesis = Actor("nemesis")
 nemesis.logic = "nemesis logic"
