@@ -1,17 +1,49 @@
 import h_actions
 
-def report (message):
-    print ("- - - - - - - - - -")
-    print (message)
-    print ("- - - - - - - - - -")
-    # non-blocking by default (set pause=True if interactive pause desired)
+# When True, calls to `report()` and `major_report()` will pause
+# and wait for the user to press Enter. Default is False to allow
+# non-interactive runs (tests, smoke scripts).
+interactive_reports = False
+
+
+def set_interactive_reports(value: bool):
+    """Enable or disable interactive pauses in report functions."""
+    global interactive_reports
+    interactive_reports = bool(value)
+
+
+def enable_interactive_reports():
+    set_interactive_reports(True)
+
+
+def disable_interactive_reports():
+    set_interactive_reports(False)
+
+
+def report(message, pause=None):
+    print("- - - - - - - - - -")
+    print(message)
+    print("- - - - - - - - - -")
+    # If pause is None, follow the module-level `interactive_reports` flag.
+    if pause is None:
+        if interactive_reports:
+            input()
+    else:
+        if pause:
+            input()
     return
 
-def major_report (message):
-    print ("* * * * * * * * * *")
-    print (message)
-    print ("* * * * * * * * * *")
-    # non-blocking by default
+
+def major_report(message, pause=None):
+    print("* * * * * * * * * *")
+    print(message)
+    print("* * * * * * * * * *")
+    if pause is None:
+        if interactive_reports:
+            input()
+    else:
+        if pause:
+            input()
     return
 
 def run_encounter (scene, party):

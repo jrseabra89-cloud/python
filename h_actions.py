@@ -482,8 +482,8 @@ def swap_arms (actor, encounter_state):
     if actor.arms_slot2 != None:
         actor.swap()
     else:
-        report (f"{actor.name} has no other weapons.")
-        user_turn (item, side_A, side_B)
+        h_encounter.report (f"{actor.name} has no other weapons.")
+        # nothing to swap
     
     encounter_state["actors"][actor]["momentum"] = False
 
