@@ -376,6 +376,115 @@ def trip (actor, encounter_state):
 
     return encounter_state
 
+
+def dirty_trick(actor, encounter_state):
+    # Dirty trick: can only be used in melee; actor loses melee status after use
+    if encounter_state["actors"][actor]["melee"] != True:
+        h_encounter.report(f"{actor.name} is not in melee and cannot use dirty trick.")
+        return encounter_state
+
+    available_targets = filter_targets(actor, encounter_state)
+
+    if actor.logic != None:
+        target = logic_target(available_targets)
+    else:
+        target = choose_target(available_targets)
+
+    if not target:
+        return encounter_state
+
+    # ensure target is in melee (dirty trick only in melee)
+    if encounter_state["actors"][target]["melee"] != True:
+        h_encounter.report(f"{actor.name} cannot use dirty trick on non-melee target.")
+        return encounter_state
+
+    h_encounter.report(f"{actor.name} attempts a dirty trick on {target.name}.")
+
+    actor.battlecry()
+
+    adder, difficulty = check_combat_modifiers (actor, encounter_state, target)
+
+    adder += 4
+
+    result = stat_test (adder, difficulty)
+
+    # actor loses melee status when using dirty trick
+    encounter_state["actors"][actor]["melee"] = False
+
+    if result == "success":
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
+        cause_daze (target, encounter_state)
+
+    elif result == "critical":
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
+        cause_daze (target, encounter_state)
+        cause_disable (target, encounter_state)
+
+    else:
+        h_encounter.report (f"{target.name} deflects the attack.")
+        encounter_state["actors"][actor]["momentum"] = False
+        riposte_trigger (actor, encounter_state, target)
+
+    return encounter_state
+
+
+def prowl(actor, encounter_state):
+    # Prowl: similar to fight but does NOT set actor into melee.
+    # If actor is not in melee, it may target any enemy (including blockers).
+    if encounter_state["actors"][actor]["melee"] == False:
+        # allow any enemy target (KO==False and opposite party)
+        available_targets = {k: v for k, v in encounter_state["actors"].items() if v["KO"] == False and v["party"] != encounter_state["actors"][actor]["party"]}
+        if not available_targets:
+            return encounter_state
+        if actor.logic != None:
+            target = logic_target(available_targets)
+        else:
+            target = choose_target(available_targets)
+    else:
+        # behave like a normal fight selection
+        available_targets = filter_targets(actor, encounter_state)
+        if actor.logic != None:
+            target = logic_target(available_targets)
+        else:
+            target = choose_target(available_targets)
+
+    if not target:
+        return encounter_state
+
+    attack_damage = actor.current_power + random.randint(1, 4)
+
+    # bonus damage if target is in melee while actor is not
+    if encounter_state["actors"][target]["melee"] == True and encounter_state["actors"][actor]["melee"] == False:
+        attack_damage += random.randint(1, 4)
+
+    # prowling action does not set melee flags
+    h_encounter.report (f"{actor.name} prowls toward {target.name}.")
+
+    actor.battlecry()
+
+    adder, difficulty = check_combat_modifiers (actor, encounter_state, target)
+
+    result = stat_test (adder, difficulty)
+
+    if result == "success":
+        damage (target, encounter_state, attack_damage, target.current_reduction, actor.damage_type)
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
+
+    elif result == "critical":
+        damage (target, encounter_state, attack_damage+4, target.current_reduction, actor.damage_type)
+        encounter_state["actors"][actor]["momentum"] = True
+        encounter_state["actors"][target]["momentum"] = False
+
+    else:
+        h_encounter.report (f"{target.name} deflects the attack.")
+        encounter_state["actors"][actor]["momentum"] = False
+        riposte_trigger (actor, encounter_state, target)
+
+    return encounter_state
+
 def stab (actor, encounter_state):
 
     available_targets = filter_targets(actor, encounter_state)

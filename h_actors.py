@@ -558,7 +558,17 @@ furioso.archetype_actions = {"hack and slash": h_actions.hack_and_slash}
 furioso.features = ["savagery"]
 
 
-archetype_list = {"gendarme": gendarme, "furioso": furioso}
+# New archetype: heathen
+# As `gendarme` but with 3 fewer stamina and no riposte; grants
+# special actions `prowl` and `dirty trick`.
+heathen = Archetype("heathen", "stamina +3, skill +4, defense +4, prowl, dirty trick")
+heathen.stamina += 3
+heathen.skill += 4
+heathen.defense += 4
+heathen.archetype_actions = {"prowl": h_actions.prowl, "dirty trick": h_actions.dirty_trick}
+heathen.features = []
+
+archetype_list = {"gendarme": gendarme, "furioso": furioso, "heathen": heathen}
 
 # ------------------------------------------------------------------
 # Actors
