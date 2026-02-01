@@ -621,6 +621,17 @@ def damage (actor, encounter_state, power = 0, reduction = 0, damage_type = "blu
     if final_damage < 0:
         final_damage = 0
 
+    # If this damage would drop the actor to 0 or below, attempt a fortune test
+    if final_damage >= actor.current_stamina:
+        h_encounter.report(f"{actor.name}'s fate is about to be decided.")
+        # Fortune test: adder = actor.current_fortune, difficulty = 10 + damage
+        ft_result = stat_test(actor.current_fortune, 10 + final_damage)
+        if ft_result == "success" or ft_result == "critical":
+            # Survives by fortune: restore to 1 stamina and skip death
+            actor.current_stamina = 1
+            h_encounter.report(f"{actor.name} is spared by fortune and clings to life.")
+            return encounter_state
+
     actor.current_stamina -= final_damage
 
     actor.pain ()
