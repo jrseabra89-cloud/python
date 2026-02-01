@@ -3,7 +3,7 @@ import h_actions
 # When True, calls to `report()` and `major_report()` will pause
 # and wait for the user to press Enter. Default is False to allow
 # non-interactive runs (tests, smoke scripts).
-interactive_reports = False
+interactive_reports = True
 
 
 def set_interactive_reports(value: bool):
@@ -193,6 +193,40 @@ def round_phase (encounter_phase, encounter_state):
 
     encounter_phase = "upkeep"
 
+    # Decrement stone skin buff durations
+    if "stone_skin_buffs" in encounter_state:
+        actors_to_remove = []
+        for buffed_actor in encounter_state["stone_skin_buffs"]:
+            encounter_state["stone_skin_buffs"][buffed_actor]["duration"] -= 1
+            if encounter_state["stone_skin_buffs"][buffed_actor]["duration"] <= 0:
+                # Buff expired, remove bonuses
+                bonus_data = encounter_state["stone_skin_buffs"][buffed_actor]
+                buffed_actor.current_reduction -= bonus_data["reduction_bonus"]
+                buffed_actor.current_power -= bonus_data["power_bonus"]
+                report(f"{buffed_actor.name}'s stone skin fades away.")
+                actors_to_remove.append(buffed_actor)
+        
+        # Remove expired buffs
+        for actor_to_remove in actors_to_remove:
+            del encounter_state["stone_skin_buffs"][actor_to_remove]
+
+    # Decrement devil's dust buff durations
+    if "devils_dust_buffs" in encounter_state:
+        actors_to_remove = []
+        for buffed_actor in encounter_state["devils_dust_buffs"]:
+            encounter_state["devils_dust_buffs"][buffed_actor]["duration"] -= 1
+            if encounter_state["devils_dust_buffs"][buffed_actor]["duration"] <= 0:
+                # Buff expired, remove bonuses
+                bonus_data = encounter_state["devils_dust_buffs"][buffed_actor]
+                buffed_actor.current_power -= bonus_data["power_bonus"]
+                buffed_actor.speed = "normal"
+                report(f"{buffed_actor.name}'s devil's dust effect wears off.")
+                actors_to_remove.append(buffed_actor)
+        
+        # Remove expired buffs
+        for actor_to_remove in actors_to_remove:
+            del encounter_state["devils_dust_buffs"][actor_to_remove]
+
     return encounter_phase, encounter_state
 
 def party_turn (actor, encounter_state):
@@ -317,5 +351,6 @@ def reset_hard_status (actor, encounter_state):
     h_actions.remove_daze (actor, encounter_state)
     h_actions.remove_disable (actor, encounter_state)
     h_actions.remove_pin (actor, encounter_state)
+    h_actions.remove_blind (actor, encounter_state)
     
     return encounter_state

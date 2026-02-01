@@ -3,6 +3,36 @@ import h_encounter
 import h_actions
 
 
+class Consumable:
+    def __init__(self, name, description):
+        self.name = name
+        self.description = description
+
+    def use(self, actor, encounter_state):
+        """Override this method in subclasses"""
+        pass
+
+
+class Inventory:
+    def __init__(self):
+        self.items = []  # List of consumables, max 3
+
+    def add_item(self, consumable):
+        if len(self.items) < 3:
+            self.items.append(consumable)
+            return True
+        return False
+
+    def remove_item(self, index):
+        if 0 <= index < len(self.items):
+            self.items.pop(index)
+            return True
+        return False
+
+    def get_items(self):
+        return self.items
+
+
 class Actor:
     def __init__(self, name):
         self.name = name
@@ -25,7 +55,7 @@ class Actor:
         self.reduction = 0
         self.insulation = 0
 
-        self.inventory = None
+        self.inventory = Inventory()
 
         self.damage_type = "blunt"
         self.arms_slot1 = None
@@ -245,6 +275,7 @@ class Minion(Actor):
 
     def battlecry(self):
         # Format matches Actor.battlecry: header, name, messages, footer
+        randomizer = random.randint(0, 7)
         messages = [
             "mE mInIoN, hUnGrY",
             "SqUeAk wE gO",
@@ -258,8 +289,7 @@ class Minion(Actor):
 
         print("< < < < < < < > > > > > > >")
         print(f"{self.name}:")
-        for msg in messages:
-            print(msg)
+        print(messages[randomizer])
         print("< < < < < < < > > > > > > >")
         return
 
@@ -270,6 +300,7 @@ class Master(Actor):
 
     def battlecry(self):
         # Imposing, threatening multi-line battlecry for Master actors
+        randomizer = random.randint(0, 7)
         threats = [
             "Fall now; I will crush you.",
             "I will break every bone you own.",
@@ -283,8 +314,7 @@ class Master(Actor):
 
         print("< < < < < < < > > > > > > >")
         print(f"{self.name}:")
-        for line in threats:
-            print(line)
+        print(threats[randomizer])
         print("< < < < < < < > > > > > > >")
         return
 
@@ -298,50 +328,189 @@ def create_party():
     h_encounter.report("Create a new party.")
     party = []
 
-    answer = input("Use default party? (y/n)")
+    answer = input("Create custom characters or use pre-made? (custom/premade)")
 
-    if answer == "n":
-        while len(party) < 2:
-            actor = create_actor()
-
-            party.append(actor)
+    if answer.lower() == "premade":
+        # Pre-made character selection
+        premade_characters = {"Valeria": valeria, "Sonja": sonja, "Bosh": bosh, "Thoth": thoth}
+        
+        h_encounter.report("Select pre-made characters for your party:")
+        while len(party) < 3:
+            available_characters = {k: v for k, v in premade_characters.items() if v not in party}
+            
+            if not available_characters:
+                h_encounter.report("All available characters have been selected.")
+                break
+            
+            options_index = {}
+            options_counter = 0
+            
+            for key in available_characters:
+                options_counter += 1
+                text1 = f"{options_counter}.\t"
+                text2 = f"{key}"
+                print(text1 + text2.center(19))
+                options_index[options_counter] = key
+            
+            try:
+                choice_index = int(input("choose character."))
+            except ValueError:
+                choice_index = 1
+            
+            if choice_index > options_counter:
+                choice_index = options_counter
+            elif choice_index < 1:
+                choice_index = 1
+            
+            choice = options_index[choice_index]
+            actor = premade_characters[choice]
+            
+            # Display character stats for confirmation
+            print("\n" + "="*50)
+            print(f"CHARACTER SUMMARY: {actor.name}")
+            print("="*50)
+            print(f"Archetype: {actor.archetype.name}")
+            print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
+            print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
+            print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
+            print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
+            print("-"*50)
+            print(f"Stamina: {actor.stamina}")
+            print(f"Skill: {actor.skill}")
+            print(f"Defense: {actor.defense}")
+            print(f"Fortune: {actor.fortune}")
+            print(f"Power: {actor.power}")
+            print(f"Reduction: {actor.reduction}")
+            print(f"Insulation: {actor.insulation}")
+            print(f"Speed: {actor.speed}")
+            print(f"Damage Type: {actor.damage_type}")
+            if actor.features:
+                print(f"Features: {', '.join(actor.features)}")
+            print("="*50 + "\n")
+            
+            confirm = input("Add this character to your party? (y/n)")
+            if confirm.lower() == "y":
+                party.append(actor)
+                h_encounter.report(f"{choice} added to party.")
+            else:
+                h_encounter.report("Character not added. Choose another character.")
+        
         h_encounter.report("Party complete.")
     else:
-        party = [valeria, bosh]
+        # Custom character creation
+        while len(party) < 4:
+            actor = create_actor()
+            party.append(actor)
+        h_encounter.report("Party complete.")
+
+    # Consumable selection
+    h_encounter.report("Choose three consumables for your party.")
+    selected_consumables = []
+    available_consumables = {"elixir": elixir, "fire bomb": fire_bomb, "devil's dust": devils_dust}
+    
+    for i in range(3):
+        remaining = {k: v for k, v in available_consumables.items() if v not in selected_consumables}
+        
+        if not remaining:
+            h_encounter.report("No more consumables available.")
+            break
+        
+        options_index = {}
+        options_counter = 0
+        
+        for key in remaining:
+            options_counter += 1
+            text1 = f"{options_counter}.\t"
+            text2 = f"{key}"
+            print(text1 + text2.center(19))
+            options_index[options_counter] = key
+        
+        try:
+            choice_index = int(input("choose consumable."))
+        except ValueError:
+            choice_index = 1
+        
+        if choice_index > options_counter:
+            choice_index = options_counter
+        elif choice_index < 1:
+            choice_index = 1
+        
+        choice = options_index[choice_index]
+        consumable = remaining[choice]
+        selected_consumables.append(consumable)
+        h_encounter.report(f"{choice.title()} selected.")
+    
+    # Distribute consumables to party members
+    for idx, consumable in enumerate(selected_consumables):
+        if idx < len(party):
+            party[idx].inventory.add_item(consumable)
+            h_encounter.report(f"{party[idx].name} receives {consumable.name}.")
 
     return party
 
 
 def create_actor():
-    try:
-        name = input("Type character name.")
-    except ValueError:
-        name = "Nameless"
-    actor = Actor(name)
+    confirmed = False
+    
+    while not confirmed:
+        try:
+            name = input("Type character name.")
+        except ValueError:
+            name = "Nameless"
+        actor = Actor(name)
 
-    h_encounter.report("Choose archetype:")
-    archetype_choice = h_actions.choose_options(archetype_list)
-    actor.give_archetype(archetype_choice)
+        h_encounter.report("Choose archetype:")
+        archetype_choice = h_actions.choose_options(archetype_list)
+        actor.give_archetype(archetype_choice)
 
-    h_encounter.report("Choose armor:")
-    armor_choice = h_actions.choose_options(armor_list)
-    actor.wear_armor(armor_choice)
+        h_encounter.report("Choose armor:")
+        armor_choice = h_actions.choose_options(armor_list)
+        actor.wear_armor(armor_choice)
 
-    h_encounter.report("Choose headgear:")
-    headgear_choice = h_actions.choose_options(headgear_list)
-    actor.wear_headgear(headgear_choice)
+        h_encounter.report("Choose headgear:")
+        headgear_choice = h_actions.choose_options(headgear_list)
+        actor.wear_headgear(headgear_choice)
 
-    h_encounter.report("Choose main weapon:")
-    arms_choice = h_actions.choose_options(arms_list)
-    actor.equip_weapons(arms_choice)
+        h_encounter.report("Choose main weapon:")
+        arms_choice = h_actions.choose_options(arms_list)
+        actor.equip_weapons(arms_choice)
 
-    h_encounter.report("Choose secondary weapon:")
-    arms_choice = h_actions.choose_options(arms_list)
-    actor.arms_slot2 = arms_choice
+        h_encounter.report("Choose secondary weapon:")
+        arms_choice = h_actions.choose_options(arms_list)
+        actor.arms_slot2 = arms_choice
 
-    actor.refresh()
+        actor.refresh()
 
-    h_encounter.report("Character complete.")
+        # Display character stats
+        print("\n" + "="*50)
+        print(f"CHARACTER SUMMARY: {actor.name}")
+        print("="*50)
+        print(f"Archetype: {actor.archetype.name}")
+        print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
+        print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
+        print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
+        print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
+        print("-"*50)
+        print(f"Stamina: {actor.stamina}")
+        print(f"Skill: {actor.skill}")
+        print(f"Defense: {actor.defense}")
+        print(f"Fortune: {actor.fortune}")
+        print(f"Power: {actor.power}")
+        print(f"Reduction: {actor.reduction}")
+        print(f"Insulation: {actor.insulation}")
+        print(f"Speed: {actor.speed}")
+        print(f"Damage Type: {actor.damage_type}")
+        if actor.features:
+            print(f"Features: {', '.join(actor.features)}")
+        print("="*50 + "\n")
+        
+        confirm = input("Confirm this character? (y/n)")
+        if confirm.lower() == "y":
+            confirmed = True
+            h_encounter.report("Character complete.")
+        else:
+            h_encounter.report("Starting character creation over...")
+
     return actor
 
 
@@ -378,6 +547,7 @@ bearded_axe.power += 3
 bearded_axe.defense -= 2
 bearded_axe.speed = "slow"
 bearded_axe.damage_type = "sharp"
+bearded_axe.arms_actions = {"smash": h_actions.smash}
 bearded_axe.features = ["charge"]
 
 shield_and_spear = Arms(
@@ -400,6 +570,7 @@ shield_and_club = Arms(
 shield_and_club.power += 1
 shield_and_club.defense += 2
 shield_and_club.damage_type = "blunt"
+shield_and_club.arms_actions = {"smash": h_actions.smash}
 shield_and_club.features = ["resist pin"]
 
 paired_swords = Arms("paired swords", "slashing, skill +1, power +1, stab, fast")
@@ -413,6 +584,7 @@ polearm = Arms("polearm", "piercing, power +2, charge, reach, slow.")
 polearm.power += 2
 polearm.speed = "slow"
 polearm.damage_type = "pierce"
+polearm.arms_actions = {"smash": h_actions.smash}
 polearm.features = ["charge", "reach"]
 
 bastard_sword = Arms("bastard sword", "slashing, power +2, stab.")
@@ -523,6 +695,68 @@ headgear_list = {
 }
 
 # ------------------------------------------------------------------
+# Consumables
+# ------------------------------------------------------------------
+
+
+class Elixir(Consumable):
+    def __init__(self):
+        super().__init__("elixir", "restores 7-12 stamina")
+    
+    def use(self, actor, encounter_state):
+        stamina_restore = random.randint(7, 12)
+        actor.current_stamina = min(actor.current_stamina + stamina_restore, actor.stamina)
+        h_encounter.report(f"{actor.name} drinks the elixir and restores {stamina_restore} stamina.")
+
+
+class FireBomb(Consumable):
+    def __init__(self):
+        super().__init__("fire bomb", "deals 7-12 hellfire damage (always hits)")
+    
+    def use(self, actor, encounter_state):
+        # Select a target
+        available_targets = h_actions.filter_targets(actor, encounter_state)
+        
+        if actor.logic != None:
+            target = h_actions.logic_target(available_targets)
+        else:
+            target = h_actions.choose_target(available_targets)
+        
+        if not target:
+            h_encounter.report(f"No target available for {actor.name}'s fire bomb.")
+            return
+        
+        damage_dealt = random.randint(7, 12)
+        h_encounter.report(f"{actor.name}'s fire bomb explodes on {target.name}!")
+        h_actions.damage(target, encounter_state, damage_dealt, target.current_insulation, "hellfire")
+
+
+class DevilsDust(Consumable):
+    def __init__(self):
+        super().__init__("devil's dust", "increases power by 2 and speed to fast for 4 turns")
+    
+    def use(self, actor, encounter_state):
+        actor.current_power += 2
+        actor.speed = "fast"
+        h_encounter.report(f"{actor.name} inhales the devil's dust and feels more powerful!")
+        h_encounter.report(f"{actor.name} gains +2 power and fast speed for 4 turns.")
+        
+        # Track the buff duration
+        if "devils_dust_buffs" not in encounter_state:
+            encounter_state["devils_dust_buffs"] = {}
+        
+        encounter_state["devils_dust_buffs"][actor] = {
+            "duration": 4,
+            "power_bonus": 2
+        }
+
+
+# Create consumable instances
+elixir = Elixir()
+fire_bomb = FireBomb()
+devils_dust = DevilsDust()
+
+# ------------------------------------------------------------------
 # Archetype
 # ------------------------------------------------------------------
 
@@ -568,7 +802,14 @@ heathen.defense += 4
 heathen.archetype_actions = {"prowl": h_actions.prowl, "dirty trick": h_actions.dirty_trick}
 heathen.features = []
 
-archetype_list = {"gendarme": gendarme, "furioso": furioso, "heathen": heathen}
+# New archetype: diabolist
+# Grants +3 fortune and the special action 'diablerie'.
+diabolist = Archetype("diabolist", "fortune +3, diablerie")
+diabolist.fortune += 3
+diabolist.archetype_actions = {"diablerie": h_actions.diablerie}
+diabolist.features = []
+
+archetype_list = {"gendarme": gendarme, "furioso": furioso, "heathen": heathen, "diabolist": diabolist}
 
 # ------------------------------------------------------------------
 # Actors
@@ -593,6 +834,25 @@ valeria.arms_slot2 = polearm
 bosh = Actor("Bosh")
 bosh.give_archetype(furioso)
 bosh.wear_armor(light_mail)
-bosh.wear_headgear(flaming_topknot)
+bosh.wear_headgear(black_hood)
 bosh.equip_weapons(bastard_sword)
-bosh.arms_slot2 = bearded_axe
+bosh.arms_slot2 = shield_and_club
+
+sonja = Actor("Sonja")
+sonja.give_archetype(heathen)
+sonja.wear_armor(bare)
+sonja.wear_headgear(flaming_topknot)
+sonja.equip_weapons(paired_swords)
+sonja.arms_slot2 = dagger_and_whip
+
+thoth = Actor("Thoth")
+thoth.give_archetype(diabolist)
+thoth.wear_armor(cape)
+thoth.wear_headgear(moon_circlet)
+thoth.equip_weapons(dagger_and_whip)
+thoth.arms_slot2 = shield_and_sword
+
+
+def get_default_party():
+    """Returns the default party with Valeria, Sonja, Bosh, and Thoth."""
+    return [valeria, sonja, bosh, thoth]

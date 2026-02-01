@@ -1,6 +1,28 @@
 import random
 import h_encounter
 
+SPELLS = {
+    "inferno": {
+        "rank": 8,
+        "min_damage": 7,
+        "max_damage": 12,
+        "damage_type": "hellfire",
+        "description": "inferno: call hellfire to scorch an enemy.",
+    },
+    "wail": {
+        "rank": 8,
+        "description": "wail: an unholy wail that pins and risks dazing multiple targets.",
+    },
+    "locust swarm": {
+        "rank": 8,
+        "description": "locust swarm: a plague of locusts blinds and ends all melee.",
+    },
+    "stone skin": {
+        "rank": 8,
+        "description": "stone skin: harden the caster's skin for protection (rank 8)",
+    }
+} 
+
 def stat_test (adder, difficulty):
 
     roll = random.randint(1,20)
@@ -148,6 +170,14 @@ def filter_targets (actor, encounter_state):
     target_options = {k:v for k, v in target_options.items() if v["KO"] == False}
     
     target_options = {k:v for k, v in target_options.items() if v["party"] != encounter_state["actors"][actor]["party"]}
+
+    # Blind actors can only target enemies in melee
+    if encounter_state["actors"][actor].get("blind") == True:
+        if encounter_state["actors"][actor]["melee"] == True:
+            target_options = {k:v for k, v in target_options.items() if v["melee"] == True}
+        else:
+            # Blind and not in melee = cannot target anyone
+            return {}
 
     if encounter_state["actors"][actor]["melee"] == True:
         target_options = {k:v for k, v in target_options.items() if v["melee"] == True}
@@ -430,6 +460,193 @@ def dirty_trick(actor, encounter_state):
     return encounter_state
 
 
+def diablerie(actor, encounter_state):
+    """Diablerie: summon a demon to cast a spell. Uses actor.current_fortune as adder
+    and the spell's rank as the difficulty. On a failed roll the caster suffers
+    1-4 backlash damage reduced by their insulation and the spell fails."""
+
+    # Rank mapping: lord (8), count (10), duke (12)
+    rank_names = {8: "summon lord (rank 8)", 10: "summon count (rank 10)", 12: "summon duke (rank 12)"}
+    rank_values = [8, 10, 12]
+
+    # choose a spell
+    if actor.logic != None:
+        spell_name = random.choice(list(SPELLS.keys()))
+    else:
+        spells_list = list(SPELLS.items())
+        options_index = {}
+        for i, (k, v) in enumerate(spells_list, start=1):
+            text1 = f"{i}.\t"
+            text2 = f"{k}"
+            text3 = f"{v.get('description','')}"
+            print(text1 + text2.center(19) + text3)
+            options_index[i] = k
+        try:
+            choice_index = int(input("choose spell."))
+        except ValueError:
+            choice_index = 1
+        if choice_index > len(spells_list):
+            choice_index = len(spells_list)
+        elif choice_index < 1:
+            choice_index = 1
+        spell_name = options_index[choice_index]
+
+    # choose rank
+    if actor.logic != None:
+        rank = random.choice(rank_values)
+    else:
+        rank_index = {}
+        for i, rv in enumerate(rank_values, start=1):
+            print(f"{i}.\t{rank_names[rv]}")
+            rank_index[i] = rv
+        try:
+            rank_choice = int(input("choose rank for the summoning."))
+        except ValueError:
+            rank_choice = 1
+        if rank_choice > len(rank_values):
+            rank_choice = len(rank_values)
+        elif rank_choice < 1:
+            rank_choice = 1
+        rank = rank_index[rank_choice]
+
+    spell = dict(SPELLS[spell_name])
+    spell["rank"] = rank
+    base_rank = SPELLS[spell_name]["rank"]
+    rank_steps = max(0, (rank - base_rank) // 2)
+
+    h_encounter.report(f"{actor.name} summons a {rank_names[rank]} of hell to cast {spell_name}.")
+
+    # Fortune test: adder = actor.current_fortune, difficulty = spell rank
+    result = stat_test(actor.current_fortune, spell["rank"])
+
+    if result == "failure":
+        h_encounter.report(f"the {rank_names[rank]} resists the summons and lashes out at {actor.name}")
+        backlash = random.randint(1, 4) + 2
+        # backlash reduced by caster insulation
+        damage(actor, encounter_state, backlash, actor.current_insulation, spell.get("damage_type", "hellfire"))
+        return encounter_state
+
+    # On success, deduct 1 fortune and report
+    actor.current_fortune = max(0, actor.current_fortune - 1)
+    h_encounter.report(f"{actor.name}'s fortune is bound to the spell ({actor.current_fortune} remaining).")
+
+    # On success, resolve the spell
+    if spell_name == "inferno":
+        available_targets = filter_targets(actor, encounter_state)
+        if actor.logic != None:
+            target = logic_target(available_targets)
+        else:
+            target = choose_target(available_targets)
+        if not target:
+            return encounter_state
+        power = random.randint(spell["min_damage"], spell["max_damage"]) + (3 * rank_steps)
+        h_encounter.report(f"the {rank_names[rank]} unleashes inferno upon {target.name}!")
+        # damage reduced by target insulation, damage type is hellfire
+        damage(target, encounter_state, power, target.current_insulation, spell.get("damage_type", "hellfire"))
+
+    elif spell_name == "wail":
+        # Determine targets: if caster not in melee -> all enemies; if in melee -> all actors in melee
+        if encounter_state["actors"][actor]["melee"] == False:
+            targets = {k: v for k, v in encounter_state["actors"].items() if v["KO"] == False and v["party"] != encounter_state["actors"][actor]["party"]}
+        else:
+            targets = {k: v for k, v in encounter_state["actors"].items() if v["KO"] == False and v.get("melee") == True}
+
+        if not targets:
+            return encounter_state
+
+        h_encounter.report(f"the {rank_names[rank]} releases a soul-wail that rends the field!")
+
+        # Difficulty increases by 2 per rank step above base
+        base_difficulty = 15
+        difficulty = base_difficulty + (2 * rank_steps)
+
+        for t in targets:
+            # Remove melee, momentum and guard
+            encounter_state["actors"][t]["melee"] = False
+            encounter_state["actors"][t]["momentum"] = False
+            encounter_state["actors"][t]["guard"] = False
+
+            # Apply pin (respects resist pin feature)
+            cause_pin(t, encounter_state)
+
+            # Each affected actor takes a fortune test
+            ft_result = stat_test(t.current_fortune, difficulty)
+            if ft_result == "failure":
+                cause_daze(t, encounter_state)
+
+            # Rank 10+ applies disable status
+            if rank >= 10:
+                cause_disable(t, encounter_state)
+
+    elif spell_name == "locust swarm":
+        # Determine targets: if caster not in melee -> all enemies; if in melee -> all actors in melee
+        if encounter_state["actors"][actor]["melee"] == False:
+            targets = {k: v for k, v in encounter_state["actors"].items() if v["KO"] == False and v["party"] != encounter_state["actors"][actor]["party"]}
+        else:
+            targets = {k: v for k, v in encounter_state["actors"].items() if v["KO"] == False and v.get("melee") == True}
+
+        if not targets:
+            return encounter_state
+
+        h_encounter.report(f"the {rank_names[rank]} unleashes a locust swarm!")
+
+        # End melee for ALL actors
+        for actor_key in encounter_state["actors"]:
+            encounter_state["actors"][actor_key]["melee"] = False
+
+        # Difficulty increases by 2 per rank step above base
+        base_difficulty = 15
+        difficulty = base_difficulty + (2 * rank_steps)
+
+        for t in targets:
+            # Remove momentum and guard
+            encounter_state["actors"][t]["momentum"] = False
+            encounter_state["actors"][t]["guard"] = False
+
+            # Each affected actor takes a fortune test
+            ft_result = stat_test(t.current_fortune, difficulty)
+            if ft_result == "failure":
+                cause_blind(t, encounter_state)
+
+            # Rank 10+ applies disable status
+            if rank >= 10:
+                cause_disable(t, encounter_state)
+
+    elif spell_name == "stone skin":
+        # Stone skin buffs the caster
+        h_encounter.report(f"the {rank_names[rank]} cloaks {actor.name} in hardened skin!")
+        
+        # Base reduction bonus: +3
+        reduction_bonus = 3
+        power_bonus = 0
+        
+        # +1 reduction and power per rank step above base
+        reduction_bonus += rank_steps
+        power_bonus = rank_steps
+        
+        # Apply bonuses temporarily
+        actor.current_reduction += reduction_bonus
+        actor.current_power += power_bonus
+        
+        h_encounter.report(f"{actor.name} gains +{reduction_bonus} reduction and +{power_bonus} power for 4 turns.")
+        
+        # Track the buff duration in encounter_state (if not already initialized)
+        if "stone_skin_buffs" not in encounter_state:
+            encounter_state["stone_skin_buffs"] = {}
+        
+        # Set duration to 4 turns
+        encounter_state["stone_skin_buffs"][actor] = {
+            "duration": 4,
+            "reduction_bonus": reduction_bonus,
+            "power_bonus": power_bonus
+        }
+
+    return encounter_state
+
+
+diablerie.description = "Call a demon from hell to cast spells."
+
+
 def prowl(actor, encounter_state):
     # Prowl: similar to fight but does NOT set actor into melee.
     # If actor is not in melee, it may target any enemy (including blockers).
@@ -598,15 +815,56 @@ def swap_arms (actor, encounter_state):
 
     return encounter_state
 
+def use_item (actor, encounter_state):
+    # Check if actor has items in inventory
+    items = actor.inventory.get_items()
+    
+    if not items:
+        h_encounter.report(f"{actor.name} has no items to use.")
+        return encounter_state
+    
+    # Display items and prompt for choice
+    options_index = {}
+    for i, item in enumerate(items, start=1):
+        print(f"{i}.\t{item.name}")
+        options_index[i] = i - 1  # Store 0-indexed position
+    
+    try:
+        choice_index = int(input("choose item."))
+    except ValueError:
+        choice_index = 1
+    
+    if choice_index > len(items):
+        choice_index = len(items)
+    elif choice_index < 1:
+        choice_index = 1
+    
+    item_index = options_index[choice_index]
+    consumable = items[item_index]
+    
+    h_encounter.report(f"{actor.name} uses {consumable.name}.")
+    
+    # Use the consumable
+    consumable.use(actor, encounter_state)
+    
+    # Remove from inventory
+    actor.inventory.remove_item(item_index)
+    
+    encounter_state["actors"][actor]["momentum"] = False
+    
+    return encounter_state
+
+use_item.description = "Use an item from inventory"
+
 base_actions = {
     "fight" : fight,
-    "smash" : smash,
     "trip" : trip,
     "skirmish" : skirmish,
     "guard" : guard,
     "block" : block,
     "retreat" : retreat,
-    "swap" : swap_arms
+    "swap" : swap_arms,
+    "use item" : use_item
 }
 
 
@@ -694,6 +952,8 @@ def savagery_trigger (actor, encounter_state):
                 actor.current_reduction += 2
                 encounter_state["actors"][actor]["enraged"] = True
                 encounter_state["actors"][actor]["speed"] = "fast"
+                # Enraged actors are always vulnerable
+                encounter_state["actors"][actor]["vulnerable"] = True
 
     return encounter_state
 
@@ -720,15 +980,31 @@ def cause_vulnerable (actor, encounter_state):
 def cause_disable (actor, encounter_state):
     status = "disable"
     message = f"{actor.name} is disabled."
-    cause_status (actor, encounter_state, status, message)
+    # Enraged actors cannot be disabled
+    if encounter_state["actors"][actor].get("enraged") == True:
+        h_encounter.report (f"{actor.name}'s rage prevents them from being disabled.")
+    else:
+        cause_status (actor, encounter_state, status, message)
 
 def cause_pin (actor, encounter_state):
     status = "pin"
     message = f"{actor.name} is pinned."
-    if "resist pin" not in actor.features:
+    # Enraged actors cannot be pinned
+    if encounter_state["actors"][actor].get("enraged") == True:
+        h_encounter.report (f"{actor.name}'s rage prevents them from being pinned.")
+    elif "resist pin" not in actor.features:
         cause_status (actor, encounter_state, status, message)
     else:
-        h_encounter.report (f"{actor.name} resists being pinned.")
+        # Resist pin has 75% chance to prevent pinning
+        if random.randint(1, 4) <= 3:
+            h_encounter.report (f"{actor.name} resists being pinned.")
+        else:
+            cause_status (actor, encounter_state, status, message)
+
+def cause_blind (actor, encounter_state):
+    status = "blind"
+    message = f"{actor.name} is blinded."
+    cause_status (actor, encounter_state, status, message)
 
 def remove_guard (actor, encounter_state):
     status = "guard"
@@ -758,4 +1034,9 @@ def remove_disable (actor, encounter_state):
 def remove_pin (actor, encounter_state):
     status = "pin"
     message = f"{actor.name} is no longer pinned."
+    remove_status (actor, encounter_state, status, message)
+
+def remove_blind (actor, encounter_state):
+    status = "blind"
+    message = f"{actor.name} is no longer blinded."
     remove_status (actor, encounter_state, status, message)
