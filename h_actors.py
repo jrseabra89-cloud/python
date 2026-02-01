@@ -440,14 +440,14 @@ def create_party():
         selected_consumables.append(consumable)
         h_encounter.report(f"{choice.title()} selected.")
     
-    # Distribute consumables to shared party inventory
+    # Create shared party inventory with selected consumables
     party_inventory = Inventory()
     for consumable in selected_consumables:
         party_inventory.add_item(consumable)
         h_encounter.report(f"{consumable.name} added to party inventory.")
     
-    # Store the shared inventory with the party
-    party.inventory = party_inventory
+    # Attach inventory to party list for later access
+    party._inventory = party_inventory
 
     return party
 

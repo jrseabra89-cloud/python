@@ -816,9 +816,14 @@ def swap_arms (actor, encounter_state):
     return encounter_state
 
 def use_item (actor, encounter_state):
-    # Access shared party inventory
-    party = encounter_state["party"]
-    items = party.inventory.get_items()
+    # Access shared party inventory from encounter_state
+    party_inventory = encounter_state.get("party_inventory")
+    
+    if party_inventory is None:
+        h_encounter.report(f"No party inventory available.")
+        return encounter_state
+    
+    items = party_inventory.get_items()
     
     if not items:
         h_encounter.report(f"The party has no items to use.")
@@ -849,7 +854,7 @@ def use_item (actor, encounter_state):
     consumable.use(actor, encounter_state)
     
     # Remove from shared inventory
-    party.inventory.remove_item(item_index)
+    party_inventory.remove_item(item_index)
     
     encounter_state["actors"][actor]["momentum"] = False
     
