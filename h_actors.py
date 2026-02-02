@@ -328,9 +328,9 @@ def create_party():
     h_encounter.report("Create a new party.")
     party = []
 
-    answer = input("Create custom characters or use pre-made? (custom/premade)")
+    answer = input("Use a pre-made party? (y/n)")
 
-    if answer.lower() == "premade":
+    if answer.lower() == "y":
         # Pre-made character selection
         premade_characters = {"Valeria": valeria, "Sonja": sonja, "Bosh": bosh, "Thoth": thoth}
         
@@ -447,7 +447,12 @@ def create_party():
         h_encounter.report(f"{consumable.name} added to party inventory.")
     
     # Attach inventory to party list for later access
-    party._inventory = party_inventory
+    #party._inventory = party_inventory
+
+
+    # refresh party stats
+    for actor in party:
+        actor.refresh()
 
     return party
 

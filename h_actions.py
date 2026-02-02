@@ -466,7 +466,7 @@ def diablerie(actor, encounter_state):
     1-4 backlash damage reduced by their insulation and the spell fails."""
 
     # Rank mapping: lord (8), count (10), duke (12)
-    rank_names = {8: "summon lord (rank 8)", 10: "summon count (rank 10)", 12: "summon duke (rank 12)"}
+    rank_names = {8: "summon lord", 10: "summon count", 12: "summon duke"}
     rank_values = [8, 10, 12]
 
     # choose a spell
@@ -860,7 +860,7 @@ def use_item (actor, encounter_state):
     
     return encounter_state
 
-use_item.description = "Use an item from inventory"
+#use_item.description = "Use an item from inventory"
 
 base_actions = {
     "fight" : fight,

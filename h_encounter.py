@@ -1,4 +1,5 @@
 import h_actions
+import random
 
 # When True, calls to `report()` and `major_report()` will pause
 # and wait for the user to press Enter. Default is False to allow
@@ -21,9 +22,9 @@ def disable_interactive_reports():
 
 
 def report(message, pause=None):
-    print("- - - - - - - - - -")
+    print("- - - - - - - - - -\n")
     print(message)
-    print("- - - - - - - - - -")
+    print("\n- - - - - - - - - -")
     # If pause is None, follow the module-level `interactive_reports` flag.
     if pause is None:
         if interactive_reports:
@@ -35,9 +36,9 @@ def report(message, pause=None):
 
 
 def major_report(message, pause=None):
-    print("* * * * * * * * * *")
+    print("* * * * * * * * * *\n")
     print(message)
-    print("* * * * * * * * * *")
+    print("\n* * * * * * * * * *")
     if pause is None:
         if interactive_reports:
             input()
@@ -50,11 +51,31 @@ def run_encounter (scene, party):
 
     encounter_state = new_encounter (scene, party)
     encounter_phase = "round"
+    randomizer = random.randint (0,5)
+    battle_start_message = [
+        "Fate provides another challenge!",
+        "Let madness reign!",
+        "Let the rivers run red!",
+        "The gods are watchful!",
+        "Battle on, pawns of the gods!",
+        "A meeting with fate!"
+    ]
+    report (battle_start_message[randomizer])
     
     while encounter_phase != "END":
 
         encounter_phase, encounter_state = PHASES[encounter_phase] (encounter_phase, encounter_state)
 
+    randomizer = random.randint (0,5)
+    battle_end_message = [
+        "In the end there is only silence.",
+        "The worms feast tonight.",
+        "Death claims its due.",
+        "The victors remain, unmoved by the death they sow.",
+        "Woe to the conquered.",
+        "The names of the dead shall not be remembered."
+    ]
+    report (battle_end_message[randomizer])
     return party
 
 def new_encounter (scene, party):

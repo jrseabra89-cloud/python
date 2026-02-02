@@ -15,6 +15,8 @@ class Scene:
 def start_call (game_state, party):
     scene = start
     h_encounter.report (f"{scene.name} - {scene.description}")
+
+    h_encounter.report (f"Two minions bump into the party. Their eyes reveal their wicked intent.")
     
     party = h_encounter.run_encounter (scene, party)
     
