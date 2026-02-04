@@ -114,8 +114,6 @@ def new_encounter (scene, party):
         encounter_state["actors"][item]["speed"] = item.speed
         
 
-    major_report(f"Round: {encounter_state['round']}")
-
     return encounter_state
 
 def round_phase (encounter_phase, encounter_state):
