@@ -260,7 +260,7 @@ def logic_target(dictionary, actor=None, encounter_state=None):
 
     return random.choice(options)
 
-def filter_targets (actor, encounter_state):
+def filter_targets (actor, encounter_state, ignore_block=False):
 
     target_options = encounter_state["actors"]
 
@@ -279,16 +279,17 @@ def filter_targets (actor, encounter_state):
     if encounter_state["actors"][actor]["melee"] == True:
         target_options = {k:v for k, v in target_options.items() if v["melee"] == True}
     else:
-        blocking_options = {k:v for k, v in target_options.items() if v["block"] == True}
-        if blocking_options != {}:
-            target_options = blocking_options
+        if not ignore_block:
+            blocking_options = {k:v for k, v in target_options.items() if v["block"] == True}
+            if blocking_options != {}:
+                target_options = blocking_options
 
 
     return target_options
 
 def get_target (actor, encounter_state):
 
-    available_targets = filter_targets(actor, encounter_state)
+    available_targets = filter_targets(actor, encounter_state, ignore_block=True)
 
     if not available_targets:
         return None
@@ -352,12 +353,12 @@ def fight (actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage, target.current_reduction, actor.damage_type)
+        damage (target, encounter_state, attack_damage, target.current_reduction, "pierce")
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage+4, target.current_reduction, actor.damage_type)
+        damage (target, encounter_state, attack_damage+4, target.current_reduction, "pierce")
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
@@ -629,7 +630,7 @@ def diablerie(actor, encounter_state):
 
     # On success, resolve the spell
     if spell_name == "inferno":
-        available_targets = filter_targets(actor, encounter_state)
+        available_targets = filter_targets(actor, encounter_state, ignore_block=True)
         if actor.logic != None:
             target = logic_target(available_targets, actor, encounter_state)
         else:
@@ -1165,10 +1166,7 @@ def damage (actor, encounter_state, power = 0, reduction = 0, damage_type = "blu
 
     ft_result = None
     # If this damage would drop the actor to 0 or below, attempt a fortune test
-    if fate_check:
-        # Fortune test: adder = actor.current_fortune, difficulty = 10 + damage
-        ft_result = stat_test(actor.current_fortune, 10 + final_damage)
-
+    
     actor.current_stamina -= final_damage
 
     actor.pain ()
@@ -1177,6 +1175,10 @@ def damage (actor, encounter_state, power = 0, reduction = 0, damage_type = "blu
 
     if fate_check:
         h_encounter.report(f"{actor.name}'s fate is about to be decided.")
+        if fate_check:
+            # Fortune test: adder = actor.current_fortune, difficulty = 10 + damage
+            ft_result = stat_test(actor.current_fortune, 10 + final_damage)
+
         if ft_result == "success" or ft_result == "critical":
             # Survives by fortune: restore to 1 stamina and skip death
             actor.current_stamina = 1

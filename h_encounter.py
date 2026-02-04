@@ -85,7 +85,7 @@ def run_encounter (scene, party):
     randomizer = random.randint (0,5)
     battle_end_message = [
         "In the end there is only silence.",
-        "The worms feast tonight.",
+        "A feast for worms.",
         "Death claims its due.",
         "Only the victors remain, unmoved by the death they sow.",
         "Woe to the conquered.",
@@ -207,14 +207,14 @@ def round_phase (encounter_phase, encounter_state):
                 else:
                     encounter_state = enemy_turn (k, encounter_state)
 
-                # end condition check
-                encounter_phase = check_end_condition (encounter_phase, encounter_state)
-                
                 # reset hard status
                 encounter_state = reset_hard_status (active_actor, encounter_state)
                 
                 # end melee check
                 encounter_state = check_melee_condition (encounter_phase, encounter_state)
+                
+                # end condition check
+                encounter_phase = check_end_condition (encounter_phase, encounter_state)
 
                 return encounter_phase, encounter_state
 
@@ -365,7 +365,7 @@ def enemy_turn (actor, encounter_state):
     return encounter_state
 
 def upkeep_phase (encounter_phase, encounter_state):
-    report(f"Round {encounter_state['round']} upkeep")
+    major_report(f"Round {encounter_state['round']} upkeep".center(40))
     input()
     encounter_state["round"] += 1
     major_report(f"Round {encounter_state['round']}")
@@ -402,7 +402,7 @@ def check_end_condition (encounter_phase, encounter_state):
             enemy_KO = False
 
     if party_KO == True or enemy_KO == True:
-        report ("Encounter over.")
+        major_report("Encounter over.".center(40))
         encounter_phase = "END"
 
     return encounter_phase

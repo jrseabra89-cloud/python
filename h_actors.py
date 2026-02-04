@@ -151,6 +151,15 @@ class Actor:
         self.features = []
         self.boons = []
 
+    def _express(self, message):
+        header = ("< " * 17).rstrip()
+        footer = ("> " * 17).rstrip()
+        print(f"{header}\n")
+        print(message)
+        print(f"\n{footer}")
+        input()
+        return
+
     def battlecry(self):
         randomizer = random.randint(0, 9)
         battlecry_message = [
@@ -166,10 +175,7 @@ class Actor:
             f"You cur!",
         ]
 
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(battlecry_message[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{battlecry_message[randomizer]}")
         # no interactive pause
         return
 
@@ -177,10 +183,7 @@ class Actor:
         randomizer = random.randint(0, 3)
         pain_message = [f"Aaaahh!", f"Curses!", f"Damn you!", f"Ooouff!"]
 
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(pain_message[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{pain_message[randomizer]}")
         # no interactive pause
         return
 
@@ -210,7 +213,7 @@ class Actor:
                         f"{self.name} sizes up its enemy.",
                         f"{self.name} senses are alert.",
                     ]
-                h_encounter.report(f"{self.name}:\n{feeling_message[randomizer]}")
+                self._express(f"{self.name}:\n{feeling_message[randomizer]}")
             return
 
     def death(self, damage_type="sharp"):
@@ -369,20 +372,18 @@ class Minion(Actor):
         # Format matches Actor.battlecry: header, name, messages, footer
         randomizer = random.randint(0, 7)
         messages = [
-            "mE mInIoN, hUnGrY",
-            "SqUeAk wE gO",
-            "fOlLoW lEaDeR mAyBe",
-            "MaNy BiTeInGs",
-            "sMaLl tOoThS eVeRyWhErE",
-            "rUn rUn NO sToP",
-            "FoR sWaRm nOw!",
-            "wIn mAyBe nOt",
+            f"Aah!",
+            f"Death to you fiend!",
+            f"You will fall!",
+            f"Die!",
+            f"The only cure for fools is death!",
+            f"I am your doom!",
+            f"Rhhaaaa!",
+            f"Your head is mine!",
+            f"Taste steel!",
+            f"You cur!",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
 
@@ -415,11 +416,7 @@ class Master(Actor):
             "I will hunt you down, one by one.",
             "This world ends when I command it.",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(threats[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{threats[randomizer]}")
         return
 
 
@@ -439,21 +436,13 @@ class Rowdy(Actor):
             "Get stuck in!",
             "Break their line!",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Oof!", "That all?", "Oi!", "Right in the ribs!"]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -474,7 +463,7 @@ class Rowdy(Actor):
                     f"{self.name} makes a rude gesture at the enemy.",
                     f"{self.name} laughs and charges their stance.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -494,21 +483,13 @@ class Righteous(Actor):
             "In the light, I strike.",
             "No mercy for the wicked.",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Faith endures.", "My resolve holds.", "Justice demands more.", "I will not falter."]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -529,7 +510,7 @@ class Righteous(Actor):
                     f"{self.name} advances, unwavering.",
                     f"{self.name} tightens their grip, certain of purpose.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -549,21 +530,13 @@ class Confident(Actor):
             "Try your best.",
             "Not even close.",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Tch.", "Is that all?", "Hardly.", "You'll need more."]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -584,7 +557,7 @@ class Confident(Actor):
                     f"{self.name} nods as if the outcome is decided.",
                     f"{self.name} smiles, inviting another challenge.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -604,21 +577,13 @@ class Anxious(Actor):
             "Not now...",
             "Here we go.",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Ah!", "Ow!", "Too close!", "No, no, no..."]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -639,7 +604,7 @@ class Anxious(Actor):
                     f"{self.name} forces a deep breath and focuses.",
                     f"{self.name} nods to themself, trying to settle down.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -659,21 +624,13 @@ class Callous(Actor):
             "Another body.",
             "Get on with it.",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Irrelevant.", "Noted.", "Still standing.", "You done?"]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -694,7 +651,7 @@ class Callous(Actor):
                     f"{self.name} tilts their head, unreadable.",
                     f"{self.name} shifts forward without a word.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -714,21 +671,13 @@ class Bully(Actor):
             "You're nothing.",
             "Try and stop me!",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Gah!", "You'll pay for that!", "Cheap shot!", "I'll break you!"]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -749,7 +698,7 @@ class Bully(Actor):
                     f"{self.name} rolls their shoulders, looking for someone weaker.",
                     f"{self.name} smirks, confident the enemy will fold.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -769,21 +718,13 @@ class Libertine(Actor):
             "Dance with me!",
             "All thrills, no fear!",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Ah! Spicy.", "A little sting.", "Worth it.", "What a rush!"]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -804,7 +745,7 @@ class Libertine(Actor):
                     f"{self.name} smiles like it's a game.",
                     f"{self.name} raises their chin, fearless and free.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -824,21 +765,13 @@ class Erudite(Actor):
             "Every motion has purpose.",
             "This is inevitable.",
         ]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Noted.", "Pain is data.", "Unpleasant.", "Adjusting."]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -859,7 +792,7 @@ class Erudite(Actor):
                     f"{self.name} moves with measured intent.",
                     f"{self.name} remains calm, intent on efficiency.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -879,21 +812,13 @@ class Downtrodden(Actor):
             "Let's finish it.",
             "Go on, then.",
         ]
-
-        print("< < < < < < < > > > > > > >\n")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("\n< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
         messages = ["Figures.", "Of course.", "I'm used to it.", "Still here."]
-
-        print("< < < < < < < > > > > > > >")
-        print(f"{self.name}:")
-        print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def feeling(self, encounter_state):
@@ -914,7 +839,7 @@ class Downtrodden(Actor):
                     f"{self.name} sets their jaw, accepting the fight.",
                     f"{self.name} stands firm, eyes dulled by hardship.",
                 ]
-            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            self._express(f"{self.name}:\n{messages[randomizer]}")
             return
 
 
@@ -1617,6 +1542,46 @@ minion_reactive = Minion("Skulk")
 minion_reactive.logic = "reactive"
 minion_reactive.equip_weapons(shield_and_club)
 minion_reactive.description = "a lean scrapper lurking behind a club and buckler"
+
+minion_disruptive_2 = Minion("Vex")
+minion_disruptive_2.logic = "disruptive"
+minion_disruptive_2.equip_weapons(dagger_and_whip)
+minion_disruptive_2.description = "a twitchy raider with a barbed whip and a jagged blade"
+
+minion_aggressive_2 = Minion("Raze")
+minion_aggressive_2.logic = "aggressive"
+minion_aggressive_2.equip_weapons(bastard_sword)
+minion_aggressive_2.description = "a broad-shouldered marauder swinging a heavy bastard sword"
+
+minion_defensive_2 = Minion("Ward")
+minion_defensive_2.logic = "defensive"
+minion_defensive_2.equip_weapons(shield_and_sword)
+minion_defensive_2.description = "a grim sentinel behind a battered shield and short blade"
+
+minion_reactive_2 = Minion("Mire")
+minion_reactive_2.logic = "reactive"
+minion_reactive_2.equip_weapons(shield_and_spear)
+minion_reactive_2.description = "a watchful lancer who shifts with every feint"
+
+minion_disruptive_3 = Minion("Snare")
+minion_disruptive_3.logic = "disruptive"
+minion_disruptive_3.equip_weapons(paired_swords)
+minion_disruptive_3.description = "a quick-footed duelist striking from odd angles"
+
+minion_aggressive_3 = Minion("Cleaver")
+minion_aggressive_3.logic = "aggressive"
+minion_aggressive_3.equip_weapons(bearded_axe)
+minion_aggressive_3.description = "a scarred axeman who swings for the bone"
+
+minion_defensive_3 = Minion("Rampart")
+minion_defensive_3.logic = "defensive"
+minion_defensive_3.equip_weapons(shield_and_club)
+minion_defensive_3.description = "a stocky bruiser braced behind a thick buckler"
+
+minion_reactive_3 = Minion("Slink")
+minion_reactive_3.logic = "reactive"
+minion_reactive_3.equip_weapons(dagger_and_whip)
+minion_reactive_3.description = "a patient prowler waiting to counter and cut"
 
 
 # ------------------------------------------------------------------
