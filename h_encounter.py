@@ -158,6 +158,7 @@ def new_encounter (scene, party):
             "momentum" : False,
             "guard" : False,
             "block" : False,
+            "hide" : False,
             "speed" : "normal",
             "vulnerable" : False,
             "daze" : False,
@@ -402,7 +403,7 @@ def check_end_condition (encounter_phase, encounter_state):
             enemy_KO = False
 
     if party_KO == True or enemy_KO == True:
-        major_report("Encounter over.".center(40))
+        major_report("The battle is over.".center(40))
         encounter_phase = "END"
 
     return encounter_phase
@@ -436,6 +437,7 @@ def reset_soft_status (actor, encounter_state):
 
     h_actions.remove_guard (actor, encounter_state)
     h_actions.remove_block (actor, encounter_state)
+    h_actions.remove_hide (actor, encounter_state)
     h_actions.remove_vulnerable (actor, encounter_state)
 
     return encounter_state

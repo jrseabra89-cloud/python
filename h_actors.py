@@ -1533,11 +1533,13 @@ minion_disruptive.description = "a wiry cutpurse with a hooked whip and darting 
 minion_aggressive = Minion("Gnash")
 minion_aggressive.logic = "aggressive"
 minion_aggressive.equip_weapons(bearded_axe)
-minion_aggressive.description = "a hulking brute hefting a chipped bearded axe"
+minion_aggressive.wear_armor(light_mail)
+minion_aggressive.description = "a hulking brute in patched mail, hefting a chipped bearded axe"
 minion_defensive = Minion("Bulwark")
 minion_defensive.logic = "defensive"
 minion_defensive.equip_weapons(shield_and_spear)
-minion_defensive.description = "a steady guard braced behind a spear and battered shield"
+minion_defensive.wear_armor(heavy_mail)
+minion_defensive.description = "a steady guard in heavy mail, braced behind a spear and battered shield"
 minion_reactive = Minion("Skulk")
 minion_reactive.logic = "reactive"
 minion_reactive.equip_weapons(shield_and_club)
@@ -1546,7 +1548,8 @@ minion_reactive.description = "a lean scrapper lurking behind a club and buckler
 minion_disruptive_2 = Minion("Vex")
 minion_disruptive_2.logic = "disruptive"
 minion_disruptive_2.equip_weapons(dagger_and_whip)
-minion_disruptive_2.description = "a twitchy raider with a barbed whip and a jagged blade"
+minion_disruptive_2.wear_armor(light_mail)
+minion_disruptive_2.description = "a twitchy raider in light mail, with a barbed whip and a jagged blade"
 
 minion_aggressive_2 = Minion("Raze")
 minion_aggressive_2.logic = "aggressive"
@@ -1556,12 +1559,14 @@ minion_aggressive_2.description = "a broad-shouldered marauder swinging a heavy 
 minion_defensive_2 = Minion("Ward")
 minion_defensive_2.logic = "defensive"
 minion_defensive_2.equip_weapons(shield_and_sword)
-minion_defensive_2.description = "a grim sentinel behind a battered shield and short blade"
+minion_defensive_2.wear_armor(heavy_mail)
+minion_defensive_2.description = "a grim sentinel in heavy mail behind a battered shield and short blade"
 
 minion_reactive_2 = Minion("Mire")
 minion_reactive_2.logic = "reactive"
 minion_reactive_2.equip_weapons(shield_and_spear)
-minion_reactive_2.description = "a watchful lancer who shifts with every feint"
+minion_reactive_2.wear_armor(light_mail)
+minion_reactive_2.description = "a watchful lancer in light mail who shifts with every feint"
 
 minion_disruptive_3 = Minion("Snare")
 minion_disruptive_3.logic = "disruptive"
@@ -1576,7 +1581,8 @@ minion_aggressive_3.description = "a scarred axeman who swings for the bone"
 minion_defensive_3 = Minion("Rampart")
 minion_defensive_3.logic = "defensive"
 minion_defensive_3.equip_weapons(shield_and_club)
-minion_defensive_3.description = "a stocky bruiser braced behind a thick buckler"
+minion_defensive_3.wear_armor(heavy_mail)
+minion_defensive_3.description = "a stocky bruiser in heavy mail, braced behind a thick buckler"
 
 minion_reactive_3 = Minion("Slink")
 minion_reactive_3.logic = "reactive"

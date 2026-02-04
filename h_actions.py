@@ -103,7 +103,9 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
     choice = None
 
     if logic == "disruptive":
-        if actor_melee and "retreat" in possible_actions:
+        if "hide" in possible_actions:
+            choice = "hide"
+        elif actor_melee and "retreat" in possible_actions:
             choice = "retreat"
         elif "skirmish" in possible_actions:
             choice = "skirmish"
@@ -284,6 +286,13 @@ def filter_targets (actor, encounter_state, ignore_block=False):
             if blocking_options != {}:
                 target_options = blocking_options
 
+    if target_options:
+        non_melee_visible = [
+            k for k, v in target_options.items() if v.get("melee") == False and v.get("hide") == False
+        ]
+        if non_melee_visible:
+            target_options = {k: v for k, v in target_options.items() if v.get("hide") == False}
+
 
     return target_options
 
@@ -365,6 +374,8 @@ def fight (actor, encounter_state):
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
         encounter_state["actors"][actor]["momentum"] = False
+        if encounter_state["actors"][target].get("guard") == True:
+            cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -500,6 +511,8 @@ def trip (actor, encounter_state):
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
         encounter_state["actors"][actor]["momentum"] = False
+        if encounter_state["actors"][target].get("guard") == True:
+            cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -553,6 +566,8 @@ def dirty_trick(actor, encounter_state):
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
         encounter_state["actors"][actor]["momentum"] = False
+        if encounter_state["actors"][target].get("guard") == True:
+            cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -796,6 +811,8 @@ def prowl(actor, encounter_state):
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
         encounter_state["actors"][actor]["momentum"] = False
+        if encounter_state["actors"][target].get("guard") == True:
+            cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -840,6 +857,8 @@ def stab (actor, encounter_state):
     else:
         h_encounter.report (f"{target.name} deflects the attack.")
         encounter_state["actors"][actor]["momentum"] = False
+        if encounter_state["actors"][target].get("guard") == True:
+            cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
     return encounter_state
@@ -891,6 +910,28 @@ def block (actor, encounter_state):
     encounter_state["actors"][actor]["block"] = True
     encounter_state["actors"][actor]["guard"] = True
     h_encounter.report (f"{actor.name} stands ready to intercept attackers.")
+
+    return encounter_state
+
+def hide(actor, encounter_state):
+    if encounter_state["actors"][actor]["melee"] == True:
+        h_encounter.report(f"{actor.name} cannot hide while in melee.")
+        return encounter_state
+
+    allies = [
+        k
+        for k, v in encounter_state["actors"].items()
+        if v["party"] == encounter_state["actors"][actor]["party"]
+        and k != actor
+        and v["KO"] == False
+        and v.get("melee") == False
+    ]
+    if not allies:
+        h_encounter.report(f"{actor.name} cannot hide without another non-melee ally.")
+        return encounter_state
+
+    encounter_state["actors"][actor]["hide"] = True
+    h_encounter.report(f"{actor.name} melts into cover.")
 
     return encounter_state
 
@@ -1143,6 +1184,7 @@ base_actions = {
     "skirmish" : skirmish,
     "guard" : guard,
     "block" : block,
+    "hide" : hide,
     "retreat" : retreat,
     "aid" : aid,
     "swap" : swap_arms,
@@ -1303,6 +1345,11 @@ def remove_guard (actor, encounter_state):
 def remove_block (actor, encounter_state):
     status = "block"
     message = f"{actor.name} is no longer blocking."
+    remove_status (actor, encounter_state, status, message)
+
+def remove_hide (actor, encounter_state):
+    status = "hide"
+    message = f"{actor.name} is no longer hidden."
     remove_status (actor, encounter_state, status, message)
 
 def remove_daze (actor, encounter_state):
