@@ -84,13 +84,7 @@ def new_encounter (scene, party):
     encounter_state["enemy"] = scene.roster
     encounter_state["round"] = 1
     encounter_state["actors"] = {}
-    
-    # Initialize shared party inventory from party's _inventory attribute
-    encounter_state["party_inventory"] = getattr(party, "_inventory", None)
-    if encounter_state["party_inventory"] is None:
-        # Fallback: create empty inventory if not set
-        from h_actors import Inventory
-        encounter_state["party_inventory"] = Inventory()
+
 
     all_actors = party + scene.roster
     

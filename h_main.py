@@ -17,11 +17,15 @@ def show_title_and_intro():
     
     if skip.lower() != "y":
         intro_text = """
-Far away, in a land caught between time and space, where the secrets of life and death lay, there is a castle of stone where the mountain king roams.
+Far away, in a land caught between time and space, where the secrets of life and death lay.
+
+There is a castle of stone where the mountain king roams.
 
 His deep, dark eyes keep watch on  his kingdom and the mysteries that sleep safe inside.
 
-His hall, his towers of stone shall not be overthrown for eternity. It is guarded by the king, insanity and the power that it brings. 
+His hall, his towers of stone shall not be overthrown for eternity.
+
+It is guarded by the king, insanity and the power that it brings. 
 
 But he's not the only one lost inside, forever hidden from the sun.
 
@@ -39,7 +43,7 @@ def setup_gamestate():
     return game_state
 
 def run_game (game_state, party):
-    current = "start"
+    current = "100"
     while current != "END":
         current, party = h_scenario.scenario_list[current](game_state, party)
     h_encounter.report ("PROGRAM OVER")

@@ -55,7 +55,7 @@ class Actor:
         self.reduction = 0
         self.insulation = 0
 
-        self.inventory = Inventory()
+        self.inventory = None
 
         self.damage_type = "blunt"
         self.arms_slot1 = None
@@ -319,6 +319,501 @@ class Master(Actor):
         return
 
 
+class Rowdy(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Oi! Let's make it loud!",
+            "Come on then!",
+            "Who's first?",
+            "Ha! This'll be fun!",
+            "I've got a swing to spare!",
+            "Make some noise!",
+            "Get stuck in!",
+            "Break their line!",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Oof!", "That all?", "Oi!", "Right in the ribs!"]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} wipes blood from their mouth and laughs.",
+                    f"{self.name} spits and grins through the pain.",
+                    f"{self.name} rolls their shoulders and snorts.",
+                    f"{self.name} shakes out their arms, still eager.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} bounces on their toes, itching for a hit.",
+                    f"{self.name} cracks their knuckles with a grin.",
+                    f"{self.name} makes a rude gesture at the enemy.",
+                    f"{self.name} laughs and charges their stance.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Righteous(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Justice guides my hand.",
+            "By oath and honor!",
+            "Let righteousness prevail.",
+            "Your sins end here.",
+            "Stand and be judged.",
+            "I am the lawful blade.",
+            "In the light, I strike.",
+            "No mercy for the wicked.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Faith endures.", "My resolve holds.", "Justice demands more.", "I will not falter."]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} whispers a vow and steadies.",
+                    f"{self.name} sets their jaw, unbroken.",
+                    f"{self.name} looks skyward, then refocuses.",
+                    f"{self.name} stands firm despite the pain.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} lifts their guard in solemn resolve.",
+                    f"{self.name} watches the enemy with righteous calm.",
+                    f"{self.name} advances, unwavering.",
+                    f"{self.name} tightens their grip, certain of purpose.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Confident(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "You can't stop me.",
+            "Watch and learn.",
+            "This ends now.",
+            "I was born for this.",
+            "Stand aside.",
+            "Victory is inevitable.",
+            "Try your best.",
+            "Not even close.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Tch.", "Is that all?", "Hardly.", "You'll need more."]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} smirks despite the blood.",
+                    f"{self.name} wipes their blade with a knowing grin.",
+                    f"{self.name} exhales, unfazed by the pain.",
+                    f"{self.name} keeps their gaze steady and sure.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} stands tall, utterly sure of victory.",
+                    f"{self.name} spins their weapon with practiced ease.",
+                    f"{self.name} nods as if the outcome is decided.",
+                    f"{self.name} smiles, inviting another challenge.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Anxious(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "I can do this...",
+            "Stay calm...",
+            "Just breathe!",
+            "Don't mess this up.",
+            "Keep it together.",
+            "Please be quick.",
+            "Not now...",
+            "Here we go.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Ah!", "Ow!", "Too close!", "No, no, no..."]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} swallows hard, hands trembling.",
+                    f"{self.name} glances around, looking for an opening.",
+                    f"{self.name} exhales sharply, trying to steady their nerves.",
+                    f"{self.name} wipes sweat from their brow.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} shifts their footing, uneasy.",
+                    f"{self.name} keeps their guard tight, eyes darting.",
+                    f"{self.name} forces a deep breath and focuses.",
+                    f"{self.name} nods to themself, trying to settle down.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Callous(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Spare me the pleas.",
+            "I don't feel a thing.",
+            "You've already lost.",
+            "Cold work, quick end.",
+            "No hesitation.",
+            "This is routine.",
+            "Another body.",
+            "Get on with it.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Irrelevant.", "Noted.", "Still standing.", "You done?"]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} stares through the pain without flinching.",
+                    f"{self.name} wipes a cut with detached focus.",
+                    f"{self.name} breathes slow, eyes empty.",
+                    f"{self.name} steadies their grip, emotionless.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} watches the enemy with cold patience.",
+                    f"{self.name} adjusts their stance, indifferent.",
+                    f"{self.name} tilts their head, unreadable.",
+                    f"{self.name} shifts forward without a word.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Bully(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Back down!",
+            "You're outmatched.",
+            "I'll crush you.",
+            "Kneel, weakling.",
+            "I own this ground.",
+            "I'll make this hurt.",
+            "You're nothing.",
+            "Try and stop me!",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Gah!", "You'll pay for that!", "Cheap shot!", "I'll break you!"]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} snarls, anger sharpening their gaze.",
+                    f"{self.name} rubs a bruise and glares.",
+                    f"{self.name} spits and steps forward.",
+                    f"{self.name} shakes off the pain with a scowl.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} looms over the field, taunting.",
+                    f"{self.name} laughs and points at their foe.",
+                    f"{self.name} rolls their shoulders, looking for someone weaker.",
+                    f"{self.name} smirks, confident the enemy will fold.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Libertine(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Let the night decide!",
+            "No chains, no masters!",
+            "To excess and victory!",
+            "A toast to danger!",
+            "We live for this!",
+            "Fortune favors the bold!",
+            "Dance with me!",
+            "All thrills, no fear!",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Ah! Spicy.", "A little sting.", "Worth it.", "What a rush!"]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} laughs breathlessly, blood on their lips.",
+                    f"{self.name} brushes back their hair, still grinning.",
+                    f"{self.name} sways, savoring the danger.",
+                    f"{self.name} winks as if the pain is a dare.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} steps lightly, almost dancing.",
+                    f"{self.name} spins their weapon with flair.",
+                    f"{self.name} smiles like it's a game.",
+                    f"{self.name} raises their chin, fearless and free.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Erudite(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Observe and learn.",
+            "A lesson in consequence.",
+            "Reason yields to necessity.",
+            "Precision over passion.",
+            "Your stance is flawed.",
+            "Let logic prevail.",
+            "Every motion has purpose.",
+            "This is inevitable.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Noted.", "Pain is data.", "Unpleasant.", "Adjusting."]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} exhales, recalculating the odds.",
+                    f"{self.name} narrows their eyes, analyzing.",
+                    f"{self.name} makes a small correction in footing.",
+                    f"{self.name} steadies their breath, focused.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} studies the enemy's rhythm.",
+                    f"{self.name} tilts their head, evaluating a weak point.",
+                    f"{self.name} moves with measured intent.",
+                    f"{self.name} remains calm, intent on efficiency.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
+class Downtrodden(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        messages = [
+            "Just let it end.",
+            "Nothing to lose.",
+            "Do what you must.",
+            "I won't beg.",
+            "This is all I've got.",
+            "Another day, another scar.",
+            "Let's finish it.",
+            "Go on, then.",
+        ]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def pain(self):
+        randomizer = random.randint(0, 3)
+        messages = ["Figures.", "Of course.", "I'm used to it.", "Still here."]
+
+        print("< < < < < < < > > > > > > >")
+        print(f"{self.name}:")
+        print(messages[randomizer])
+        print("< < < < < < < > > > > > > >")
+        return
+
+    def feeling(self, encounter_state):
+        chance = random.randint(0, 1)
+        if chance == 1:
+            randomizer = random.randint(0, 3)
+            if self.current_stamina < self.stamina // 2 + 1:
+                messages = [
+                    f"{self.name} sags for a moment, then pushes on.",
+                    f"{self.name} looks weary, but doesn't stop.",
+                    f"{self.name} wipes blood away with a tired hand.",
+                    f"{self.name} exhales, resigned but steady.",
+                ]
+            else:
+                messages = [
+                    f"{self.name} keeps their head down and fights.",
+                    f"{self.name} trudges forward, quiet and grim.",
+                    f"{self.name} sets their jaw, accepting the fight.",
+                    f"{self.name} stands firm, eyes dulled by hardship.",
+                ]
+            h_encounter.report(f"{self.name}:\n{messages[randomizer]}")
+            return
+
+
 # ------------------------------------------------------------------
 # Party
 # ------------------------------------------------------------------
@@ -406,14 +901,16 @@ def create_party():
     # Consumable selection
     h_encounter.report("Choose three consumables for your party.")
     selected_consumables = []
-    available_consumables = {"elixir": elixir, "fire bomb": fire_bomb, "devil's dust": devils_dust}
+    available_consumables = {
+        "elixir": Elixir,
+        "fire bomb": FireBomb,
+        "devil's dust": DevilsDust,
+        "saint's flesh": SaintsFlesh,
+        "unicorn dust": UnicornDust,
+    }
     
     for i in range(3):
-        remaining = {k: v for k, v in available_consumables.items() if v not in selected_consumables}
-        
-        if not remaining:
-            h_encounter.report("No more consumables available.")
-            break
+        remaining = available_consumables
         
         options_index = {}
         options_counter = 0
@@ -445,9 +942,10 @@ def create_party():
     for consumable in selected_consumables:
         party_inventory.add_item(consumable)
         h_encounter.report(f"{consumable.name} added to party inventory.")
-    
-    # Attach inventory to party list for later access
-    #party._inventory = party_inventory
+
+    # Assign shared inventory to all party members
+    for actor in party:
+        actor.inventory = party_inventory
 
 
     # refresh party stats
@@ -465,7 +963,42 @@ def create_actor():
             name = input("Type character name.")
         except ValueError:
             name = "Nameless"
-        actor = Actor(name)
+        h_encounter.report("Choose personality:")
+        personality_options = {
+            "standard": Actor,
+            "rowdy": Rowdy,
+            "righteous": Righteous,
+            "confident": Confident,
+            "anxious": Anxious,
+            "callous": Callous,
+            "bully": Bully,
+            "libertine": Libertine,
+            "erudite": Erudite,
+            "downtrodden": Downtrodden,
+        }
+
+        options_index = {}
+        options_counter = 0
+        for key in personality_options:
+            options_counter += 1
+            text1 = f"{options_counter}.\t"
+            text2 = f"{key}"
+            print(text1 + text2.center(19))
+            options_index[options_counter] = key
+
+        try:
+            choice_index = int(input("choose personality."))
+        except ValueError:
+            choice_index = 1
+
+        if choice_index > options_counter:
+            choice_index = options_counter
+        elif choice_index < 1:
+            choice_index = 1
+
+        choice = options_index[choice_index]
+        actor_class = personality_options[choice]
+        actor = actor_class(name)
 
         h_encounter.report("Choose archetype:")
         archetype_choice = h_actions.choose_options(archetype_list)
@@ -759,10 +1292,49 @@ class DevilsDust(Consumable):
         }
 
 
+class SaintsFlesh(Consumable):
+    def __init__(self):
+        super().__init__("saint's flesh", "restores 3-6 fortune")
+
+    def use(self, actor, encounter_state):
+        fortune_restore = random.randint(3, 6)
+        actor.current_fortune = min(actor.current_fortune + fortune_restore, actor.fortune)
+        h_encounter.report(
+            f"{actor.name} consumes the saint's flesh and restores {fortune_restore} fortune."
+        )
+
+
+class UnicornDust(Consumable):
+    def __init__(self):
+        super().__init__("unicorn dust", "grants +2 reduction and +1 power for 3 turns")
+
+    def use(self, actor, encounter_state):
+        reduction_bonus = 2
+        power_bonus = 1
+
+        actor.current_reduction += reduction_bonus
+        actor.current_power += power_bonus
+
+        h_encounter.report(
+            f"{actor.name}'s skin hardens. +{reduction_bonus} reduction and +{power_bonus} power for 3 turns."
+        )
+
+        if "stone_skin_buffs" not in encounter_state:
+            encounter_state["stone_skin_buffs"] = {}
+
+        encounter_state["stone_skin_buffs"][actor] = {
+            "duration": 3,
+            "reduction_bonus": reduction_bonus,
+            "power_bonus": power_bonus,
+        }
+
+
 # Create consumable instances
-elixir = Elixir()
-fire_bomb = FireBomb()
-devils_dust = DevilsDust()
+Elixir = Elixir()
+FireBomb = FireBomb()
+DevilsDust = DevilsDust()
+SaintsFlesh = SaintsFlesh()
+UnicornDust = UnicornDust()
 
 # ------------------------------------------------------------------
 # Archetype
@@ -832,28 +1404,28 @@ grunt.logic = "grunt logic"
 nemesis = Actor("nemesis")
 nemesis.logic = "nemesis logic"
 
-valeria = Actor("Valeria")
+valeria = Righteous("Valeria")
 valeria.give_archetype(gendarme)
 valeria.wear_armor(heavy_mail)
 valeria.wear_headgear(winged_helm)
 valeria.equip_weapons(shield_and_sword)
 valeria.arms_slot2 = polearm
 
-bosh = Actor("Bosh")
+bosh = Rowdy("Bosh")
 bosh.give_archetype(furioso)
 bosh.wear_armor(light_mail)
 bosh.wear_headgear(black_hood)
 bosh.equip_weapons(bastard_sword)
 bosh.arms_slot2 = shield_and_club
 
-sonja = Actor("Sonja")
+sonja = Confident("Sonja")
 sonja.give_archetype(heathen)
 sonja.wear_armor(bare)
 sonja.wear_headgear(flaming_topknot)
 sonja.equip_weapons(paired_swords)
 sonja.arms_slot2 = dagger_and_whip
 
-thoth = Actor("Thoth")
+thoth = Erudite("Thoth")
 thoth.give_archetype(diabolist)
 thoth.wear_armor(cape)
 thoth.wear_headgear(moon_circlet)
