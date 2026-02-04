@@ -13,7 +13,7 @@ h_actors.Actor.feeling = lambda self, s: None
 # Auto-choose first option/target
 h_actions.choose_options = lambda d: next(iter(d.values()))
 h_actions.choose_target = lambda d: next(iter(d))
-h_actions.logic_target = lambda d: next(iter(d))
+h_actions.logic_target = lambda d, *args, **kwargs: next(iter(d))
 
 print('Starting non-interactive encounter test (builtins.input patched)...')
 party = [h_actors.valeria, h_actors.bosh]

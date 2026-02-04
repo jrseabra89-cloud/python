@@ -22,9 +22,9 @@ def disable_interactive_reports():
 
 
 def report(message, pause=None):
-    print("- - - - - - - - - -\n")
+    print("- - - - - - - - - - - - - - - - - - -\n")
     print(message)
-    print("\n- - - - - - - - - -")
+    print("\n- - - - - - - - - - - - - - - - - - -")
     # If pause is None, follow the module-level `interactive_reports` flag.
     if pause is None:
         if interactive_reports:
@@ -36,9 +36,9 @@ def report(message, pause=None):
 
 
 def major_report(message, pause=None):
-    print("* * * * * * * * * *\n")
-    print(message)
-    print("\n* * * * * * * * * *")
+    print("* * * * * * * * * * * * * * * * * * *\n")
+    print(message.center(40))
+    print("\n* * * * * * * * * * * * * * * * * * *")
     if pause is None:
         if interactive_reports:
             input()
@@ -51,6 +51,21 @@ def run_encounter (scene, party):
 
     encounter_state = new_encounter (scene, party)
     encounter_phase = "round"
+
+    if scene.roster:
+        descriptions = []
+        for actor in scene.roster:
+            desc = getattr(actor, "description", "")
+            descriptions.append(desc if desc else actor.name)
+        report(f"The party encounters {', '.join(descriptions)}.")
+
+    if getattr(scene, "event", None):
+        event = scene.event
+        event_message = event.get("message")
+        if event_message:
+            report(event_message)
+        apply_scene_event(encounter_state, event)
+
     randomizer = random.randint (0,5)
     battle_start_message = [
         "Fate provides another challenge!",
@@ -60,7 +75,8 @@ def run_encounter (scene, party):
         "Battle on, pawns of the gods!",
         "A meeting with fate!"
     ]
-    report (battle_start_message[randomizer])
+    report(battle_start_message[randomizer])
+    major_report(f"Round: {encounter_state['round']}")
     
     while encounter_phase != "END":
 
@@ -71,12 +87,46 @@ def run_encounter (scene, party):
         "In the end there is only silence.",
         "The worms feast tonight.",
         "Death claims its due.",
-        "The victors remain, unmoved by the death they sow.",
+        "Only the victors remain, unmoved by the death they sow.",
         "Woe to the conquered.",
         "The names of the dead shall not be remembered."
     ]
     report (battle_end_message[randomizer])
+
+    for enemy in scene.roster:
+        enemy.refresh()
+
     return party
+
+
+def apply_scene_event(encounter_state, event):
+    effect = event.get("effect")
+
+    if effect == "party_slow_first_round":
+        speed_overrides = {}
+        for actor in encounter_state.get("party", []):
+            speed_overrides[actor] = encounter_state["actors"][actor]["speed"]
+            encounter_state["actors"][actor]["speed"] = "slow"
+        encounter_state["speed_overrides"] = speed_overrides
+        encounter_state["restore_speeds_round"] = encounter_state["round"] + 1
+
+    elif effect == "enemy_momentum":
+        for actor in encounter_state.get("enemy", []):
+            encounter_state["actors"][actor]["momentum"] = True
+
+    elif effect == "enemy_guard":
+        for actor in encounter_state.get("enemy", []):
+            encounter_state["actors"][actor]["guard"] = True
+
+    elif effect == "party_guard":
+        for actor in encounter_state.get("party", []):
+            encounter_state["actors"][actor]["guard"] = True
+
+    elif effect == "party_vulnerable":
+        for actor in encounter_state.get("party", []):
+            encounter_state["actors"][actor]["vulnerable"] = True
+
+    return encounter_state
 
 def new_encounter (scene, party):
     encounter_state = {}
@@ -84,6 +134,15 @@ def new_encounter (scene, party):
     encounter_state["enemy"] = scene.roster
     encounter_state["round"] = 1
     encounter_state["actors"] = {}
+
+    party_inventory = None
+    if party:
+        party_inventory = party[0].inventory
+    encounter_state["party_inventory"] = party_inventory
+
+    if party_inventory is not None:
+        for actor in party:
+            actor.inventory = party_inventory
 
 
     all_actors = party + scene.roster
@@ -264,11 +323,17 @@ def party_turn (actor, encounter_state):
     print(status_text)
     input()
 
-    possible_actions = h_actions.filter_actions (actor, encounter_state, actor.special_actions | actor.arms_actions | h_actions.base_actions)
+    while True:
+        possible_actions = h_actions.filter_actions (actor, encounter_state, actor.special_actions | actor.arms_actions | h_actions.base_actions)
 
-    user_action = h_actions.choose_options (possible_actions)
+        user_action = h_actions.choose_options (possible_actions)
 
-    encounter_state = user_action (actor, encounter_state)
+        if user_action == h_actions.observe:
+            encounter_state = user_action(actor, encounter_state)
+            continue
+
+        encounter_state = user_action (actor, encounter_state)
+        break
 
     encounter_state["actors"][actor]["active"] = False
     encounter_state["actors"][actor]["done"] = True
@@ -290,7 +355,7 @@ def enemy_turn (actor, encounter_state):
 
     possible_actions = h_actions.filter_actions (actor, encounter_state, h_actions.base_actions | actor.special_actions | actor.arms_actions)
 
-    enemy_action = h_actions.enemy_action_logic (possible_actions)
+    enemy_action = h_actions.enemy_action_logic(actor, encounter_state, possible_actions)
 
     encounter_state = enemy_action (actor, encounter_state)    
 
@@ -304,6 +369,12 @@ def upkeep_phase (encounter_phase, encounter_state):
     input()
     encounter_state["round"] += 1
     major_report(f"Round {encounter_state['round']}")
+
+    if encounter_state.get("restore_speeds_round") == encounter_state["round"]:
+        for actor, speed in encounter_state.get("speed_overrides", {}).items():
+            encounter_state["actors"][actor]["speed"] = speed
+        encounter_state.pop("speed_overrides", None)
+        encounter_state.pop("restore_speeds_round", None)
     for k in encounter_state["actors"]:
         encounter_state["actors"][k]["done"] = False
         encounter_state["actors"][k]["active"] = False
@@ -356,7 +427,8 @@ def check_melee_condition (encounter_phase, encounter_state):
     for item in encounter_state["actors"]:
         encounter_state["actors"][item]["melee"] = False
     
-    report ("No melee.")
+    if party_melee or enemy_melee:
+        report ("No melee.")
 
     return encounter_state
 

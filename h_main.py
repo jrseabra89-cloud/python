@@ -17,9 +17,9 @@ def show_title_and_intro():
     
     if skip.lower() != "y":
         intro_text = """
-Far away, in a land caught between time and space, where the secrets of life and death lay.
+Far away, in a land caught between time and space, where the secrets of life and death lay,
 
-There is a castle of stone where the mountain king roams.
+there is a castle of stone where the mountain king roams.
 
 His deep, dark eyes keep watch on  his kingdom and the mysteries that sleep safe inside.
 

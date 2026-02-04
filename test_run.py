@@ -10,7 +10,7 @@ h_actors.Actor.feeling = lambda self, s: None
 # Auto-choose first option/target
 h_actions.choose_options = lambda d: next(iter(d.values()))
 h_actions.choose_target = lambda d: next(iter(d))
-h_actions.logic_target = lambda d: next(iter(d))
+h_actions.logic_target = lambda d, *args, **kwargs: next(iter(d))
 
 # Non-blocking party_turn and enemy_turn
 
@@ -25,7 +25,7 @@ def party_turn_nb(actor, encounter_state):
 
 def enemy_turn_nb(actor, encounter_state):
     possible_actions = h_actions.filter_actions(actor, encounter_state, h_actions.base_actions | actor.special_actions | actor.arms_actions)
-    enemy_action = h_actions.enemy_action_logic(possible_actions)
+    enemy_action = h_actions.enemy_action_logic(actor, encounter_state, possible_actions)
     encounter_state = enemy_action(actor, encounter_state)
     encounter_state["actors"][actor]["active"] = False
     encounter_state["actors"][actor]["done"] = True

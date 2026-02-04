@@ -69,18 +69,94 @@ def choose_options (dictionary):
     return dictionary[choice]
 
 
-def enemy_action_logic (possible_actions):
-    # prefer melee fight, then skirmish, then guard; fallback to first available
+def enemy_action_logic(actor, encounter_state, possible_actions):
+    if not possible_actions:
+        return None
+
+    logic = getattr(actor, "logic", None)
+    actor_state = encounter_state["actors"][actor]
+    targets = {
+        k: v
+        for k, v in encounter_state["actors"].items()
+        if v["KO"] == False and v["party"] != actor_state["party"]
+    }
+
+    low_stamina_targets = [
+        t for t in targets if t.current_stamina <= max(1, t.stamina // 2)
+    ]
+    high_stamina_targets = [
+        t for t in targets if t.current_stamina > max(1, t.stamina // 2)
+    ]
+    not_in_melee_targets = [t for t, v in targets.items() if v.get("melee") == False]
+    guard_block_targets = [
+        t for t, v in targets.items() if v.get("guard") == True or v.get("block") == True
+    ]
+    soft_targets = [
+        t
+        for t, v in targets.items()
+        if v.get("daze") == True or v.get("vulnerable") == True
+    ]
+
+    actor_melee = actor_state.get("melee") == True
+    actor_momentum = actor_state.get("momentum") == True
+
     choice = None
-    if "fight" in possible_actions:
-        choice = "fight"
-    elif "skirmish" in possible_actions:
-        choice = "skirmish"
-    elif "guard" in possible_actions:
-        choice = "guard"
+
+    if logic == "disruptive":
+        if actor_melee and "retreat" in possible_actions:
+            choice = "retreat"
+        elif "skirmish" in possible_actions:
+            choice = "skirmish"
+        elif "trip" in possible_actions:
+            choice = "trip"
+        elif "smash" in possible_actions:
+            choice = "smash"
+        elif "fight" in possible_actions:
+            choice = "fight"
+
+    elif logic == "aggressive":
+        for action_name in ["fight", "smash", "stab", "hack and slash", "trip", "skirmish"]:
+            if action_name in possible_actions:
+                choice = action_name
+                break
+
+    elif logic == "defensive":
+        if "block" in possible_actions:
+            choice = "block"
+        elif "guard" in possible_actions:
+            choice = "guard"
+        else:
+            for action_name in ["fight", "smash", "stab", "skirmish", "trip"]:
+                if action_name in possible_actions:
+                    choice = action_name
+                    break
+
+    elif logic == "reactive":
+        if actor_melee and not actor_momentum and "retreat" in possible_actions:
+            choice = "retreat"
+        elif not_in_melee_targets and "skirmish" in possible_actions:
+            choice = "skirmish"
+        elif guard_block_targets and "trip" in possible_actions:
+            choice = "trip"
+        elif actor_melee and (low_stamina_targets or soft_targets):
+            for action_name in ["fight", "smash", "stab", "trip", "hack and slash"]:
+                if action_name in possible_actions:
+                    choice = action_name
+                    break
+        elif "guard" in possible_actions:
+            choice = "guard"
+        elif "block" in possible_actions:
+            choice = "block"
 
     if choice is None:
-        # return first available action function or None
+        if "fight" in possible_actions:
+            choice = "fight"
+        elif "skirmish" in possible_actions:
+            choice = "skirmish"
+        elif "guard" in possible_actions:
+            choice = "guard"
+
+    if choice is None:
         return next(iter(possible_actions.values())) if possible_actions else None
 
     return possible_actions.get(choice)
@@ -147,21 +223,42 @@ def choose_target (dictionary):
 
     return choice
 
-def logic_target (dictionary):
+def logic_target(dictionary, actor=None, encounter_state=None):
+    options = list(dictionary.keys())
 
-    options_index = {}
-    options_counter = 0
-
-    for key in dictionary:
-        options_counter += 1
-        options_index [options_counter] = key
-
-    if options_counter == 0:
+    if not options:
         return None
 
-    choice_index = random.randint(1, options_counter)
-    choice = options_index[choice_index]
-    return choice
+    if actor is None or getattr(actor, "logic", None) is None:
+        return random.choice(options)
+
+    logic = actor.logic
+
+    if logic == "disruptive":
+        preferred = [
+            t for t in options if dictionary[t].get("melee") == False and dictionary[t].get("pin") == False
+        ]
+        if preferred:
+            return random.choice(preferred)
+
+    elif logic == "aggressive":
+        return min(options, key=lambda t: t.current_stamina / max(1, t.stamina))
+
+    elif logic == "defensive":
+        return max(options, key=lambda t: t.current_stamina / max(1, t.stamina))
+
+    elif logic == "reactive":
+        preferred = [
+            t
+            for t in options
+            if dictionary[t].get("daze") == True
+            or dictionary[t].get("vulnerable") == True
+            or t.current_stamina <= max(1, t.stamina // 2)
+        ]
+        if preferred:
+            return random.choice(preferred)
+
+    return random.choice(options)
 
 def filter_targets (actor, encounter_state):
 
@@ -234,7 +331,7 @@ def fight (actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
 
@@ -276,7 +373,7 @@ def smash (actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
     
@@ -323,7 +420,7 @@ def hack_and_slash (actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
     
@@ -370,7 +467,7 @@ def trip (actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
 
@@ -416,7 +513,7 @@ def dirty_trick(actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
 
@@ -534,7 +631,7 @@ def diablerie(actor, encounter_state):
     if spell_name == "inferno":
         available_targets = filter_targets(actor, encounter_state)
         if actor.logic != None:
-            target = logic_target(available_targets)
+            target = logic_target(available_targets, actor, encounter_state)
         else:
             target = choose_target(available_targets)
         if not target:
@@ -656,14 +753,14 @@ def prowl(actor, encounter_state):
         if not available_targets:
             return encounter_state
         if actor.logic != None:
-            target = logic_target(available_targets)
+            target = logic_target(available_targets, actor, encounter_state)
         else:
             target = choose_target(available_targets)
     else:
         # behave like a normal fight selection
         available_targets = filter_targets(actor, encounter_state)
         if actor.logic != None:
-            target = logic_target(available_targets)
+            target = logic_target(available_targets, actor, encounter_state)
         else:
             target = choose_target(available_targets)
 
@@ -707,7 +804,7 @@ def stab (actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
 
@@ -751,7 +848,7 @@ def skirmish (actor, encounter_state):
     available_targets = filter_targets(actor, encounter_state)
 
     if actor.logic != None:
-        target = logic_target(available_targets)
+        target = logic_target(available_targets, actor, encounter_state)
     else:
         target = choose_target(available_targets)
 
@@ -802,6 +899,169 @@ def retreat (actor, encounter_state):
     encounter_state["actors"][actor]["momentum"] = False
     h_encounter.report (f"{actor.name} retreats from melee.")
 
+    return encounter_state
+
+def aid(actor, encounter_state):
+    available_targets = {
+        k: v
+        for k, v in encounter_state["actors"].items()
+        if v["KO"] == False
+        and v["party"] == encounter_state["actors"][actor]["party"]
+        and k != actor
+    }
+
+    if not available_targets:
+        h_encounter.report(f"{actor.name} has no ally to aid.")
+        return encounter_state
+
+    if actor.logic != None:
+        target = logic_target(available_targets, actor, encounter_state)
+    else:
+        target = choose_target(available_targets)
+
+    if not target:
+        return encounter_state
+
+    target_state = encounter_state["actors"][target]
+    if target_state.get("vulnerable") == True or target_state.get("daze") == True:
+        if target_state.get("vulnerable") == True:
+            remove_vulnerable(target, encounter_state)
+        if target_state.get("daze") == True:
+            remove_daze(target, encounter_state)
+        h_encounter.report(f"{actor.name} aids {target.name}, steadying them.")
+    else:
+        target_state["momentum"] = True
+        h_encounter.report(f"{actor.name} aids {target.name}, granting momentum.")
+
+    encounter_state["actors"][actor]["momentum"] = False
+    return encounter_state
+
+def rally(actor, encounter_state):
+    if "rally_used" not in encounter_state:
+        encounter_state["rally_used"] = True
+    else:
+        if random.randint(0, 1) == 0:
+            h_encounter.report(f"{actor.name}'s rally falters.")
+            encounter_state["actors"][actor]["momentum"] = False
+            return encounter_state
+
+    allies = [
+        k
+        for k, v in encounter_state["actors"].items()
+        if v["KO"] == False
+        and v["party"] == encounter_state["actors"][actor]["party"]
+        and k != actor
+    ]
+
+    if not allies:
+        h_encounter.report(f"{actor.name} rallies, but no allies respond.")
+        return encounter_state
+
+    for ally in allies:
+        ally_state = encounter_state["actors"][ally]
+        if ally_state.get("vulnerable") == True or ally_state.get("daze") == True:
+            if ally_state.get("vulnerable") == True:
+                remove_vulnerable(ally, encounter_state)
+            if ally_state.get("daze") == True:
+                remove_daze(ally, encounter_state)
+        else:
+            ally_state["momentum"] = True
+
+    h_encounter.report(f"{actor.name} rallies the party.")
+    encounter_state["actors"][actor]["momentum"] = False
+    return encounter_state
+
+def decisive_order(actor, encounter_state):
+    if encounter_state.get("decisive_order_used") == True:
+        h_encounter.report(f"{actor.name} has already issued a decisive order this encounter.")
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    allies = {
+        k: v
+        for k, v in encounter_state["actors"].items()
+        if v["KO"] == False
+        and v["party"] == encounter_state["actors"][actor]["party"]
+        and k != actor
+    }
+
+    if not allies:
+        h_encounter.report(f"{actor.name} has no ally to command.")
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    if actor.logic != None:
+        target = logic_target(allies, actor, encounter_state)
+    else:
+        target = choose_target(allies)
+
+    if not target:
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    possible = filter_actions(
+        target,
+        encounter_state,
+        {"fight": fight, "skirmish": skirmish, "retreat": retreat},
+    )
+
+    if not possible:
+        h_encounter.report(f"{target.name} cannot act on the decisive order.")
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    if actor.logic != None:
+        ordered_action = enemy_action_logic(target, encounter_state, possible)
+    else:
+        ordered_action = choose_options(possible)
+
+    if ordered_action:
+        h_encounter.report(f"{actor.name} issues a decisive order to {target.name}.")
+        encounter_state = ordered_action(target, encounter_state)
+
+    encounter_state["decisive_order_used"] = True
+    encounter_state["actors"][actor]["momentum"] = False
+    return encounter_state
+
+def deliverance(actor, encounter_state):
+    if encounter_state.get("deliverance_used") == True:
+        h_encounter.report(f"{actor.name} has already used deliverance this encounter.")
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    allies = {
+        k: v
+        for k, v in encounter_state["actors"].items()
+        if v["KO"] == False
+        and v["party"] == encounter_state["actors"][actor]["party"]
+        and k != actor
+    }
+
+    if not allies:
+        h_encounter.report(f"{actor.name} has no ally to aid with deliverance.")
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    if actor.logic != None:
+        target = logic_target(allies, actor, encounter_state)
+    else:
+        target = choose_target(allies)
+
+    if not target:
+        encounter_state["actors"][actor]["momentum"] = False
+        return encounter_state
+
+    restore = random.randint(7, 12)
+    target.current_stamina = min(target.current_stamina + restore, target.stamina)
+
+    remove_vulnerable(target, encounter_state)
+    remove_daze(target, encounter_state)
+    remove_pin(target, encounter_state)
+    remove_disable(target, encounter_state)
+
+    h_encounter.report(f"{actor.name} delivers salvation to {target.name}, restoring {restore} stamina.")
+    encounter_state["deliverance_used"] = True
+    encounter_state["actors"][actor]["momentum"] = False
     return encounter_state
 
 def swap_arms (actor, encounter_state): 
@@ -860,6 +1120,20 @@ def use_item (actor, encounter_state):
     
     return encounter_state
 
+def observe(actor, encounter_state):
+    enemies = [e for e in encounter_state.get("enemy", []) if encounter_state["actors"][e]["KO"] == False]
+    if not enemies:
+        h_encounter.report("There are no enemies to observe.")
+        return encounter_state
+
+    descriptions = []
+    for enemy in enemies:
+        desc = getattr(enemy, "description", "")
+        descriptions.append(desc if desc else enemy.name)
+
+    h_encounter.report(f"You observe: {', '.join(descriptions)}.")
+    return encounter_state
+
 #use_item.description = "Use an item from inventory"
 
 base_actions = {
@@ -869,8 +1143,10 @@ base_actions = {
     "guard" : guard,
     "block" : block,
     "retreat" : retreat,
+    "aid" : aid,
     "swap" : swap_arms,
-    "use item" : use_item
+    "use item" : use_item,
+    "observe" : observe
 }
 
 
@@ -885,22 +1161,27 @@ def damage (actor, encounter_state, power = 0, reduction = 0, damage_type = "blu
     if final_damage < 0:
         final_damage = 0
 
+    fate_check = final_damage >= actor.current_stamina
+
+    ft_result = None
     # If this damage would drop the actor to 0 or below, attempt a fortune test
-    if final_damage >= actor.current_stamina:
-        h_encounter.report(f"{actor.name}'s fate is about to be decided.")
+    if fate_check:
         # Fortune test: adder = actor.current_fortune, difficulty = 10 + damage
         ft_result = stat_test(actor.current_fortune, 10 + final_damage)
-        if ft_result == "success" or ft_result == "critical":
-            # Survives by fortune: restore to 1 stamina and skip death
-            actor.current_stamina = 1
-            h_encounter.report(f"{actor.name} is spared by fortune and clings to life.")
-            return encounter_state
 
     actor.current_stamina -= final_damage
 
     actor.pain ()
 
     h_encounter.report (f"{actor.name} takes {final_damage} damage.")
+
+    if fate_check:
+        h_encounter.report(f"{actor.name}'s fate is about to be decided.")
+        if ft_result == "success" or ft_result == "critical":
+            # Survives by fortune: restore to 1 stamina and skip death
+            actor.current_stamina = 1
+            h_encounter.report(f"{actor.name} is spared by fortune and clings to life.")
+            return encounter_state
 
     if actor.current_stamina < 1:
         actor.current_stamina = 0

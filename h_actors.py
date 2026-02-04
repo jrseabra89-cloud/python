@@ -33,6 +33,87 @@ class Inventory:
         return self.items
 
 
+def _apply_stat_bonus(actor, attr, amount):
+    current_attr = f"current_{attr}"
+    if hasattr(actor, attr):
+        setattr(actor, attr, getattr(actor, attr) + amount)
+    if hasattr(actor, current_attr):
+        setattr(actor, current_attr, getattr(actor, current_attr) + amount)
+
+
+def _boon_benefits():
+    return [
+        {"name": "+3 stamina", "apply": lambda a: _apply_stat_bonus(a, "stamina", 3)},
+        {"name": "+2 stamina", "apply": lambda a: _apply_stat_bonus(a, "stamina", 2)},
+        {"name": "+1 skill", "apply": lambda a: _apply_stat_bonus(a, "skill", 1)},
+        {"name": "+2 defense", "apply": lambda a: _apply_stat_bonus(a, "defense", 2)},
+        {"name": "+1 defense", "apply": lambda a: _apply_stat_bonus(a, "defense", 1)},
+        {"name": "+1 fortune", "apply": lambda a: _apply_stat_bonus(a, "fortune", 1)},
+        {"name": "+2 fortune", "apply": lambda a: _apply_stat_bonus(a, "fortune", 2)},
+        {"name": "+1 power", "apply": lambda a: _apply_stat_bonus(a, "power", 1)},
+        {"name": "+2 power", "apply": lambda a: _apply_stat_bonus(a, "power", 2)},
+        {"name": "+1 reduction", "apply": lambda a: _apply_stat_bonus(a, "reduction", 1)},
+        {"name": "+1 insulation", "apply": lambda a: _apply_stat_bonus(a, "insulation", 1)},
+        {
+            "name": "gain riposte",
+            "apply": lambda a: a.features.append("riposte") if "riposte" not in a.features else None,
+        },
+    ]
+
+
+def apply_boon(party):
+    eligible = [a for a in party if len(getattr(a, "boons", [])) < 3]
+    if not eligible:
+        h_encounter.report("No party member can receive more boons.")
+        return
+
+    h_encounter.report("Choose one party member to receive a boon.")
+    options_index = {}
+    options_counter = 0
+    for actor in eligible:
+        options_counter += 1
+        print(f"{options_counter}.\t{actor.name}")
+        options_index[options_counter] = actor
+
+    try:
+        choice_index = int(input("choose actor."))
+    except ValueError:
+        choice_index = 1
+
+    if choice_index > options_counter:
+        choice_index = options_counter
+    elif choice_index < 1:
+        choice_index = 1
+
+    chosen_actor = options_index[choice_index]
+
+    benefits = _boon_benefits()
+    selected = random.sample(benefits, 2)
+
+    h_encounter.report("Choose a boon:")
+    boon_index = {}
+    boon_counter = 0
+    for boon in selected:
+        boon_counter += 1
+        print(f"{boon_counter}.\t{boon['name']}")
+        boon_index[boon_counter] = boon
+
+    try:
+        boon_choice_index = int(input("choose boon."))
+    except ValueError:
+        boon_choice_index = 1
+
+    if boon_choice_index > boon_counter:
+        boon_choice_index = boon_counter
+    elif boon_choice_index < 1:
+        boon_choice_index = 1
+
+    boon_choice = boon_index[boon_choice_index]
+    boon_choice["apply"](chosen_actor)
+    chosen_actor.boons.append(boon_choice["name"])
+    h_encounter.report(f"{chosen_actor.name} gains boon: {boon_choice['name']}.")
+
+
 class Actor:
     def __init__(self, name):
         self.name = name
@@ -68,6 +149,7 @@ class Actor:
         self.special_actions = {}
         self.arms_actions = {}
         self.features = []
+        self.boons = []
 
     def battlecry(self):
         randomizer = random.randint(0, 9)
@@ -272,6 +354,16 @@ class Actor:
 class Minion(Actor):
     def __init__(self, name):
         super().__init__(name)
+        self.stamina += random.randint(-3, 3)
+        self.skill += random.randint(-3, 3)
+        self.defense += random.randint(-3, 3)
+        self.fortune += random.randint(-3, 3)
+        self.power += random.randint(-3, 3)
+        self.current_stamina = self.stamina
+        self.current_skill = self.skill
+        self.current_defense = self.defense
+        self.current_fortune = self.fortune
+        self.current_power = self.power
 
     def battlecry(self):
         # Format matches Actor.battlecry: header, name, messages, footer
@@ -297,6 +389,18 @@ class Minion(Actor):
 class Master(Actor):
     def __init__(self, name):
         super().__init__(name)
+        self.stamina += 6
+        self.skill += 3
+        self.stamina += random.randint(-3, 3)
+        self.skill += random.randint(-3, 3)
+        self.defense += random.randint(-3, 3)
+        self.fortune += random.randint(-3, 3)
+        self.power += random.randint(-3, 3)
+        self.current_stamina = self.stamina
+        self.current_skill = self.skill
+        self.current_defense = self.defense
+        self.current_fortune = self.fortune
+        self.current_power = self.power
 
     def battlecry(self):
         # Imposing, threatening multi-line battlecry for Master actors
@@ -776,10 +880,10 @@ class Downtrodden(Actor):
             "Go on, then.",
         ]
 
-        print("< < < < < < < > > > > > > >")
+        print("< < < < < < < > > > > > > >\n")
         print(f"{self.name}:")
         print(messages[randomizer])
-        print("< < < < < < < > > > > > > >")
+        print("\n< < < < < < < > > > > > > >")
         return
 
     def pain(self):
@@ -827,75 +931,156 @@ def create_party():
 
     if answer.lower() == "y":
         # Pre-made character selection
-        premade_characters = {"Valeria": valeria, "Sonja": sonja, "Bosh": bosh, "Thoth": thoth}
-        
-        h_encounter.report("Select pre-made characters for your party:")
-        while len(party) < 4:
-            available_characters = {k: v for k, v in premade_characters.items() if v not in party}
-            
-            if not available_characters:
-                h_encounter.report("All available characters have been selected.")
-                break
-            
-            options_index = {}
-            options_counter = 0
-            
-            for key in available_characters:
-                options_counter += 1
-                text1 = f"{options_counter}.\t"
-                text2 = f"{key}"
-                print(text1 + text2.center(19))
-                options_index[options_counter] = key
-            
-            try:
-                choice_index = int(input("choose character."))
-            except ValueError:
-                choice_index = 1
-            
-            if choice_index > options_counter:
-                choice_index = options_counter
-            elif choice_index < 1:
-                choice_index = 1
-            
-            choice = options_index[choice_index]
-            actor = premade_characters[choice]
-            
-            # Display character stats for confirmation
-            print("\n" + "="*50)
-            print(f"CHARACTER SUMMARY: {actor.name}")
-            print("="*50)
-            print(f"Archetype: {actor.archetype.name}")
-            print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
-            print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
-            print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
-            print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
-            print("-"*50)
-            print(f"Stamina: {actor.stamina}")
-            print(f"Skill: {actor.skill}")
-            print(f"Defense: {actor.defense}")
-            print(f"Fortune: {actor.fortune}")
-            print(f"Power: {actor.power}")
-            print(f"Reduction: {actor.reduction}")
-            print(f"Insulation: {actor.insulation}")
-            print(f"Speed: {actor.speed}")
-            print(f"Damage Type: {actor.damage_type}")
-            if actor.features:
-                print(f"Features: {', '.join(actor.features)}")
-            print("="*50 + "\n")
-            
-            confirm = input("Add this character to your party? (y/n)")
-            if confirm.lower() == "y":
-                party.append(actor)
-                h_encounter.report(f"{choice} added to party.")
-            else:
-                h_encounter.report("Character not added. Choose another character.")
+        premade_characters = {
+            "Valeria": valeria,
+            "Sonja": sonja,
+            "Bosh": bosh,
+            "Thoth": thoth,
+            "Sera": sera,
+        }
+
+        full_premade = input("Use the full pre-made party? (y/n)")
+        if full_premade.lower() == "y":
+            party = get_default_party()
+            h_encounter.report("Full pre-made party selected.")
+        else:
+            h_encounter.report("Select pre-made characters for your party:")
+            while len(party) < 4:
+                available_characters = {k: v for k, v in premade_characters.items() if v not in party}
+                
+                if not available_characters:
+                    h_encounter.report("All available characters have been selected.")
+                    break
+                
+                options_index = {}
+                options_counter = 0
+                
+                for key in available_characters:
+                    options_counter += 1
+                    text1 = f"{options_counter}.\t"
+                    text2 = f"{key}"
+                    print(text1 + text2.center(19))
+                    options_index[options_counter] = key
+                
+                try:
+                    choice_index = int(input("choose character."))
+                except ValueError:
+                    choice_index = 1
+                
+                if choice_index > options_counter:
+                    choice_index = options_counter
+                elif choice_index < 1:
+                    choice_index = 1
+                
+                choice = options_index[choice_index]
+                actor = premade_characters[choice]
+                
+                # Display character stats for confirmation
+                print("\n" + "="*50)
+                print(f"CHARACTER SUMMARY: {actor.name}")
+                print("="*50)
+                print(f"Archetype: {actor.archetype.name}")
+                print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
+                print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
+                print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
+                print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
+                print("-"*50)
+                print(f"Stamina: {actor.stamina}")
+                print(f"Skill: {actor.skill}")
+                print(f"Defense: {actor.defense}")
+                print(f"Fortune: {actor.fortune}")
+                print(f"Power: {actor.power}")
+                print(f"Reduction: {actor.reduction}")
+                print(f"Insulation: {actor.insulation}")
+                print(f"Speed: {actor.speed}")
+                print(f"Damage Type: {actor.damage_type}")
+                if actor.features:
+                    print(f"Features: {', '.join(actor.features)}")
+                print("="*50 + "\n")
+                
+                confirm = input("Add this character to your party? (y/n)")
+                if confirm.lower() == "y":
+                    party.append(actor)
+                    h_encounter.report(f"{choice} added to party.")
+                else:
+                    h_encounter.report("Character not added. Choose another character.")
         
         h_encounter.report("Party complete.")
     else:
         # Custom character creation
         while len(party) < 4:
-            actor = create_actor()
-            party.append(actor)
+            use_premade = input("Use a pre-made character for the next slot? (y/n)")
+            if use_premade.lower() == "y":
+                premade_characters = {
+                    "Valeria": valeria,
+                    "Sonja": sonja,
+                    "Bosh": bosh,
+                    "Thoth": thoth,
+                    "Sera": sera,
+                }
+                available_characters = {k: v for k, v in premade_characters.items() if v not in party}
+
+                if not available_characters:
+                    h_encounter.report("No pre-made characters available. Creating a custom character instead.")
+                    actor = create_actor()
+                    party.append(actor)
+                    continue
+
+                options_index = {}
+                options_counter = 0
+
+                for key in available_characters:
+                    options_counter += 1
+                    text1 = f"{options_counter}.\t"
+                    text2 = f"{key}"
+                    print(text1 + text2.center(19))
+                    options_index[options_counter] = key
+
+                try:
+                    choice_index = int(input("choose character."))
+                except ValueError:
+                    choice_index = 1
+
+                if choice_index > options_counter:
+                    choice_index = options_counter
+                elif choice_index < 1:
+                    choice_index = 1
+
+                choice = options_index[choice_index]
+                actor = premade_characters[choice]
+
+                # Display character stats for confirmation
+                print("\n" + "="*50)
+                print(f"CHARACTER SUMMARY: {actor.name}")
+                print("="*50)
+                print(f"Archetype: {actor.archetype.name}")
+                print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
+                print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
+                print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
+                print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
+                print("-"*50)
+                print(f"Stamina: {actor.stamina}")
+                print(f"Skill: {actor.skill}")
+                print(f"Defense: {actor.defense}")
+                print(f"Fortune: {actor.fortune}")
+                print(f"Power: {actor.power}")
+                print(f"Reduction: {actor.reduction}")
+                print(f"Insulation: {actor.insulation}")
+                print(f"Speed: {actor.speed}")
+                print(f"Damage Type: {actor.damage_type}")
+                if actor.features:
+                    print(f"Features: {', '.join(actor.features)}")
+                print("="*50 + "\n")
+
+                confirm = input("Add this character to your party? (y/n)")
+                if confirm.lower() == "y":
+                    party.append(actor)
+                    h_encounter.report(f"{choice} added to party.")
+                else:
+                    h_encounter.report("Character not added. Choose another character.")
+            else:
+                actor = create_actor()
+                party.append(actor)
         h_encounter.report("Party complete.")
 
     # Consumable selection
@@ -1362,6 +1547,20 @@ gendarme.skill += 4
 gendarme.defense += 4
 gendarme.features = ["riposte"]
 
+herald = Archetype(
+    "herald",
+    "stamina +6, skill +2, defense +2, rally, decisive order, deliverance",
+)
+herald.stamina += 6
+herald.skill += 2
+herald.defense += 2
+herald.archetype_actions = {
+    "rally": h_actions.rally,
+    "decisive order": h_actions.decisive_order,
+    "deliverance": h_actions.deliverance,
+}
+herald.features = []
+
 furioso = Archetype(
     "furioso", "stamina +12, skill +2, defense + 2, hack and slash, savagery"
 )
@@ -1389,20 +1588,41 @@ diabolist.fortune += 3
 diabolist.archetype_actions = {"diablerie": h_actions.diablerie}
 diabolist.features = []
 
-archetype_list = {"gendarme": gendarme, "furioso": furioso, "heathen": heathen, "diabolist": diabolist}
+archetype_list = {
+    "gendarme": gendarme,
+    "herald": herald,
+    "furioso": furioso,
+    "heathen": heathen,
+    "diabolist": diabolist,
+}
 
 # ------------------------------------------------------------------
-# Actors
+# Enemies
 # ------------------------------------------------------------------
 
 
-minion = Minion("Skitter")
-minion.logic = "minion logic"
-minion.speed = "slow"
-grunt = Minion("Chitter")
-grunt.logic = "grunt logic"
-nemesis = Actor("nemesis")
-nemesis.logic = "nemesis logic"
+minion_disruptive = Minion("Jinx")
+minion_disruptive.logic = "disruptive"
+minion_disruptive.equip_weapons(dagger_and_whip)
+minion_disruptive.description = "a wiry cutpurse with a hooked whip and darting eyes"
+minion_aggressive = Minion("Gnash")
+minion_aggressive.logic = "aggressive"
+minion_aggressive.equip_weapons(bearded_axe)
+minion_aggressive.description = "a hulking brute hefting a chipped bearded axe"
+minion_defensive = Minion("Bulwark")
+minion_defensive.logic = "defensive"
+minion_defensive.equip_weapons(shield_and_spear)
+minion_defensive.description = "a steady guard braced behind a spear and battered shield"
+minion_reactive = Minion("Skulk")
+minion_reactive.logic = "reactive"
+minion_reactive.equip_weapons(shield_and_club)
+minion_reactive.description = "a lean scrapper lurking behind a club and buckler"
+
+
+# ------------------------------------------------------------------
+# Pre-made Actors
+# ------------------------------------------------------------------
+
 
 valeria = Righteous("Valeria")
 valeria.give_archetype(gendarme)
@@ -1432,7 +1652,14 @@ thoth.wear_headgear(moon_circlet)
 thoth.equip_weapons(dagger_and_whip)
 thoth.arms_slot2 = shield_and_sword
 
+sera = Callous("Sera")
+sera.give_archetype(herald)
+sera.wear_armor(light_mail)
+sera.wear_headgear(winged_helm)
+sera.equip_weapons(shield_and_sword)
+sera.arms_slot2 = shield_and_spear
+
 
 def get_default_party():
-    """Returns the default party with Valeria, Sonja, Bosh, and Thoth."""
+    """Returns the default party with Valeria, Sonja, Bosh, Thoth, and Sera."""
     return [valeria, sonja, bosh, thoth]
