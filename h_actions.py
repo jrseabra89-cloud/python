@@ -99,11 +99,35 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
 
     actor_melee = actor_state.get("melee") == True
     actor_momentum = actor_state.get("momentum") == True
+    allies = [
+        k
+        for k, v in encounter_state["actors"].items()
+        if v["KO"] == False
+        and v["party"] == actor_state["party"]
+        and k != actor
+    ]
+    allies_need_help = [
+        a
+        for a in allies
+        if encounter_state["actors"][a].get("vulnerable") == True
+        or encounter_state["actors"][a].get("daze") == True
+        or encounter_state["actors"][a].get("pin") == True
+        or encounter_state["actors"][a].get("disable") == True
+    ]
+    allies_in_melee = [
+        a for a in allies if encounter_state["actors"][a].get("melee") == True
+    ]
 
     choice = None
 
     if logic == "disruptive":
-        if "hide" in possible_actions:
+        if not actor_melee and "prowl" in possible_actions:
+            choice = "prowl"
+        elif actor_melee and "dirty trick" in possible_actions:
+            choice = "dirty trick"
+        elif "diablerie" in possible_actions:
+            choice = "diablerie"
+        elif "hide" in possible_actions:
             choice = "hide"
         elif actor_melee and "retreat" in possible_actions:
             choice = "retreat"
@@ -117,24 +141,42 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
             choice = "fight"
 
     elif logic == "aggressive":
-        for action_name in ["fight", "smash", "stab", "hack and slash", "trip", "skirmish"]:
+        for action_name in [
+            "hack and slash",
+            "fight",
+            "smash",
+            "stab",
+            "trip",
+            "skirmish",
+            "diablerie",
+        ]:
             if action_name in possible_actions:
                 choice = action_name
                 break
 
     elif logic == "defensive":
-        if "block" in possible_actions:
+        if allies_need_help and "deliverance" in possible_actions:
+            choice = "deliverance"
+        elif allies and "rally" in possible_actions:
+            choice = "rally"
+        elif allies and "decisive order" in possible_actions:
+            choice = "decisive order"
+        elif "block" in possible_actions:
             choice = "block"
-        elif "guard" in possible_actions:
-            choice = "guard"
         else:
-            for action_name in ["fight", "smash", "stab", "skirmish", "trip"]:
+            for action_name in ["fight", "smash", "stab", "skirmish", "trip", "block"]:
                 if action_name in possible_actions:
                     choice = action_name
                     break
 
     elif logic == "reactive":
-        if actor_melee and not actor_momentum and "retreat" in possible_actions:
+        if actor_melee and "dirty trick" in possible_actions:
+            choice = "dirty trick"
+        elif not actor_melee and "prowl" in possible_actions:
+            choice = "prowl"
+        elif allies_need_help and "deliverance" in possible_actions:
+            choice = "deliverance"
+        elif actor_melee and not actor_momentum and "retreat" in possible_actions:
             choice = "retreat"
         elif not_in_melee_targets and "skirmish" in possible_actions:
             choice = "skirmish"
@@ -145,6 +187,8 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
                 if action_name in possible_actions:
                     choice = action_name
                     break
+        elif allies_in_melee and "decisive order" in possible_actions:
+            choice = "decisive order"
         elif "guard" in possible_actions:
             choice = "guard"
         elif "block" in possible_actions:
@@ -178,6 +222,7 @@ def filter_actions (actor, encounter_state, action_dict):
     if encounter_state["actors"][actor].get("melee") == True:
         action_options.pop("skirmish", None)
         action_options.pop("block", None)
+        action_options.pop("hide", None)
 
     if encounter_state["actors"][actor].get("melee") == False:
         action_options.pop("retreat", None)
@@ -187,6 +232,13 @@ def filter_actions (actor, encounter_state, action_dict):
             action_options.pop("trip", None)
             action_options.pop("stab", None)
             action_options.pop("block", None)
+        action_options.pop("dirty trick", None)
+
+    if encounter_state["actors"][actor].get("melee") == True:
+        action_options.pop("prowl", None)
+
+    if encounter_state["actors"][actor].get("hide_blocked") == True:
+        action_options.pop("hide", None)
 
     return action_options
 
@@ -430,6 +482,9 @@ def smash (actor, encounter_state):
 def hack_and_slash (actor, encounter_state):
 
     available_targets = filter_targets(actor, encounter_state)
+    blocking_targets = {k: v for k, v in available_targets.items() if v.get("block") == True}
+    if blocking_targets:
+        available_targets = blocking_targets
 
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
@@ -579,8 +634,8 @@ def diablerie(actor, encounter_state):
     1-4 backlash damage reduced by their insulation and the spell fails."""
 
     # Rank mapping: lord (8), count (10), duke (12)
-    rank_names = {8: "summon lord", 10: "summon count", 12: "summon duke"}
-    rank_values = [8, 10, 12]
+    rank_names = {8: "summon lord", 11: "summon count", 14: "summon duke"}
+    rank_values = [8, 11, 14]
 
     # choose a spell
     if actor.logic != None:
@@ -740,8 +795,12 @@ def diablerie(actor, encounter_state):
         # Apply bonuses temporarily
         actor.current_reduction += reduction_bonus
         actor.current_power += power_bonus
+        if "juggernaut" not in actor.features:
+            actor.features.append("juggernaut")
         
-        h_encounter.report(f"{actor.name} gains +{reduction_bonus} reduction and +{power_bonus} power for 4 turns.")
+        h_encounter.report(
+            f"{actor.name} gains +{reduction_bonus} reduction, +{power_bonus} power, and juggernaut for 4 turns."
+        )
         
         # Track the buff duration in encounter_state (if not already initialized)
         if "stone_skin_buffs" not in encounter_state:
@@ -751,7 +810,8 @@ def diablerie(actor, encounter_state):
         encounter_state["stone_skin_buffs"][actor] = {
             "duration": 4,
             "reduction_bonus": reduction_bonus,
-            "power_bonus": power_bonus
+            "power_bonus": power_bonus,
+            "juggernaut": True,
         }
 
     return encounter_state
@@ -866,6 +926,14 @@ def stab (actor, encounter_state):
 def skirmish (actor, encounter_state):
 
     available_targets = filter_targets(actor, encounter_state)
+    available_targets = {
+        k: v for k, v in available_targets.items() if v.get("melee") == False
+    }
+
+    if not available_targets:
+        h_encounter.report(f"{actor.name} has no clear shot at a non-melee target.")
+        encounter_state["action_failed"] = True
+        return encounter_state
 
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
@@ -916,6 +984,8 @@ def block (actor, encounter_state):
 def hide(actor, encounter_state):
     if encounter_state["actors"][actor]["melee"] == True:
         h_encounter.report(f"{actor.name} cannot hide while in melee.")
+        encounter_state["actors"][actor]["hide_blocked"] = True
+        encounter_state["action_failed"] = True
         return encounter_state
 
     allies = [
@@ -928,9 +998,12 @@ def hide(actor, encounter_state):
     ]
     if not allies:
         h_encounter.report(f"{actor.name} cannot hide without another non-melee ally.")
+        encounter_state["actors"][actor]["hide_blocked"] = True
+        encounter_state["action_failed"] = True
         return encounter_state
 
     encounter_state["actors"][actor]["hide"] = True
+    encounter_state["actors"][actor]["momentum"] = True
     h_encounter.report(f"{actor.name} melts into cover.")
 
     return encounter_state
@@ -1107,13 +1180,17 @@ def deliverance(actor, encounter_state):
     return encounter_state
 
 def swap_arms (actor, encounter_state): 
+    swapped = False
     if actor.arms_slot2 != None:
         actor.swap()
+        swapped = True
     else:
         h_encounter.report (f"{actor.name} has no other weapons.")
         # nothing to swap
     
     encounter_state["actors"][actor]["momentum"] = False
+    if swapped and "quick draw" in actor.features:
+        encounter_state["action_failed"] = True
 
     return encounter_state
 
@@ -1275,6 +1352,8 @@ def riposte_trigger (actor, encounter_state, target):
                 h_encounter.report (f"{target.name} misses.")
 
 def savagery_trigger (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return encounter_state
     if "savagery" in actor.features:
         if actor.current_stamina < actor.stamina // 2 +1:
             if encounter_state["actors"][actor]["enraged"] == False:
@@ -1289,26 +1368,39 @@ def savagery_trigger (actor, encounter_state):
     return encounter_state
 
 def cause_status (actor, encounter_state, status, message):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
     if encounter_state["actors"][actor][status] == False:
         encounter_state["actors"][actor][status] = True
         h_encounter.report (message)
 
 def remove_status (actor, encounter_state, status, message):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
     if encounter_state["actors"][actor][status] == True:
         encounter_state["actors"][actor][status] = False
         h_encounter.report (message)
 
 def cause_daze (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
+    if "juggernaut" in actor.features:
+        h_encounter.report (f"{actor.name}'s juggernaut resilience ignores the daze.")
+        return
     status = "daze"
     message = f"{actor.name} is dazed."
     cause_status (actor, encounter_state, status, message)
 
 def cause_vulnerable (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
     status = "vulnerable"
     message = f"{actor.name} is vulnerable."
     cause_status (actor, encounter_state, status, message)
 
 def cause_disable (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
     status = "disable"
     message = f"{actor.name} is disabled."
     # Enraged actors cannot be disabled
@@ -1318,6 +1410,8 @@ def cause_disable (actor, encounter_state):
         cause_status (actor, encounter_state, status, message)
 
 def cause_pin (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
     status = "pin"
     message = f"{actor.name} is pinned."
     # Enraged actors cannot be pinned
@@ -1333,6 +1427,8 @@ def cause_pin (actor, encounter_state):
             cause_status (actor, encounter_state, status, message)
 
 def cause_blind (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
     status = "blind"
     message = f"{actor.name} is blinded."
     cause_status (actor, encounter_state, status, message)

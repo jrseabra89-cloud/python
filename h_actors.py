@@ -357,11 +357,11 @@ class Actor:
 class Minion(Actor):
     def __init__(self, name):
         super().__init__(name)
-        self.stamina += random.randint(-3, 3)
-        self.skill += random.randint(-3, 3)
-        self.defense += random.randint(-3, 3)
-        self.fortune += random.randint(-3, 3)
-        self.power += random.randint(-3, 3)
+        self.stamina += random.randint(-1, 3)
+        self.skill += random.randint(-1, 3)
+        self.defense += random.randint(-1, 3)
+        self.fortune += random.randint(-1, 3)
+        self.power += random.randint(-1, 3)
         self.current_stamina = self.stamina
         self.current_skill = self.skill
         self.current_defense = self.defense
@@ -384,6 +384,41 @@ class Minion(Actor):
             f"You cur!",
         ]
         self._express(f"{self.name}:\n{messages[randomizer]}")
+        return
+
+
+class Champion(Actor):
+    def __init__(self, name):
+        super().__init__(name)
+        self.stamina += 8
+        self.skill += 4
+        self.defense += 4
+        self.fortune += 2
+        self.power += 2
+        self.stamina += random.randint(3, 9)
+        self.skill += random.randint(0, 4)
+        self.defense += random.randint(0, 4)
+        self.fortune += random.randint(0, 4)
+        self.power += random.randint(0, 2)
+        self.current_stamina = self.stamina
+        self.current_skill = self.skill
+        self.current_defense = self.defense
+        self.current_fortune = self.fortune
+        self.current_power = self.power
+
+    def battlecry(self):
+        randomizer = random.randint(0, 7)
+        threats = [
+            "Stand down, or be broken.",
+            "Your line ends here.",
+            "I am the hammer.",
+            "You will fall beneath my banner.",
+            "Witness your end.",
+            "Steel speaks for me.",
+            "No step back.",
+            "I will cut a path through you.",
+        ]
+        self._express(f"{self.name}:\n{threats[randomizer]}")
         return
 
 
@@ -1009,7 +1044,7 @@ def create_party():
         h_encounter.report("Party complete.")
 
     # Consumable selection
-    h_encounter.report("Choose three consumables for your party.")
+    h_encounter.report("Choose one consumable for your party.")
     selected_consumables = []
     available_consumables = {
         "elixir": Elixir,
@@ -1018,34 +1053,32 @@ def create_party():
         "saint's flesh": SaintsFlesh,
         "unicorn dust": UnicornDust,
     }
-    
-    for i in range(3):
-        remaining = available_consumables
-        
-        options_index = {}
-        options_counter = 0
-        
-        for key in remaining:
-            options_counter += 1
-            text1 = f"{options_counter}.\t"
-            text2 = f"{key}"
-            print(text1 + text2.center(19))
-            options_index[options_counter] = key
-        
-        try:
-            choice_index = int(input("choose consumable."))
-        except ValueError:
-            choice_index = 1
-        
-        if choice_index > options_counter:
-            choice_index = options_counter
-        elif choice_index < 1:
-            choice_index = 1
-        
-        choice = options_index[choice_index]
-        consumable = remaining[choice]
-        selected_consumables.append(consumable)
-        h_encounter.report(f"{choice.title()} selected.")
+
+    options_index = {}
+    options_counter = 0
+
+    for key, item in available_consumables.items():
+        options_counter += 1
+        text1 = f"{options_counter}.\t"
+        text2 = f"{key}"
+        text3 = f"{item.description}"
+        print(text1 + text2.center(19) + text3)
+        options_index[options_counter] = key
+
+    try:
+        choice_index = int(input("choose consumable."))
+    except ValueError:
+        choice_index = 1
+
+    if choice_index > options_counter:
+        choice_index = options_counter
+    elif choice_index < 1:
+        choice_index = 1
+
+    choice = options_index[choice_index]
+    consumable = available_consumables[choice]
+    selected_consumables.append(consumable)
+    h_encounter.report(f"{choice.title()} selected.")
     
     # Create shared party inventory with selected consumables
     party_inventory = Inventory()
@@ -1290,6 +1323,10 @@ suit_of_plate.reduction += 3
 suit_of_plate.skill -= 2
 suit_of_plate.insulation -= 2
 
+brigandine = Armor("brigandine", "defense +1, damage reduction +1")
+brigandine.defense += 1
+brigandine.reduction += 1
+
 armor_list = {
     "bare": bare,
     "cape": cape,
@@ -1424,9 +1461,11 @@ class UnicornDust(Consumable):
 
         actor.current_reduction += reduction_bonus
         actor.current_power += power_bonus
+        if "juggernaut" not in actor.features:
+            actor.features.append("juggernaut")
 
         h_encounter.report(
-            f"{actor.name}'s skin hardens. +{reduction_bonus} reduction and +{power_bonus} power for 3 turns."
+            f"{actor.name}'s skin hardens. +{reduction_bonus} reduction, +{power_bonus} power, and juggernaut for 3 turns."
         )
 
         if "stone_skin_buffs" not in encounter_state:
@@ -1436,6 +1475,7 @@ class UnicornDust(Consumable):
             "duration": 3,
             "reduction_bonus": reduction_bonus,
             "power_bonus": power_bonus,
+            "juggernaut": True,
         }
 
 
@@ -1466,11 +1506,14 @@ class Archetype:
         self.features = []
 
 
-gendarme = Archetype("gendarme", "stamina +6, skill +4, defense + 4, riposte")
+gendarme = Archetype(
+    "gendarme",
+    "stamina +6, skill +4, defense + 3, riposte, quick draw",
+)
 gendarme.stamina += 6
 gendarme.skill += 4
-gendarme.defense += 4
-gendarme.features = ["riposte"]
+gendarme.defense += 3
+gendarme.features = ["riposte", "quick draw"]
 
 herald = Archetype(
     "herald",
@@ -1588,6 +1631,80 @@ minion_reactive_3 = Minion("Slink")
 minion_reactive_3.logic = "reactive"
 minion_reactive_3.equip_weapons(dagger_and_whip)
 minion_reactive_3.description = "a patient prowler waiting to counter and cut"
+
+champion_1 = Champion("Aurek")
+champion_1.logic = "aggressive"
+champion_1.give_archetype(furioso)
+champion_1.equip_weapons(bearded_axe)
+champion_1.wear_armor(suit_of_plate)
+champion_1.wear_headgear(stag_helm)
+champion_1.description = "a towering executioner in plate, swinging a heavy axe"
+
+champion_2 = Champion("Seren")
+champion_2.logic = "defensive"
+champion_2.give_archetype(gendarme)
+champion_2.equip_weapons(shield_and_spear)
+champion_2.wear_armor(heavy_mail)
+champion_2.wear_headgear(winged_helm)
+champion_2.description = "a disciplined champion behind a long spear and stout shield"
+
+champion_3 = Champion("Mira")
+champion_3.logic = "disruptive"
+champion_3.give_archetype(heathen)
+champion_3.equip_weapons(paired_swords)
+champion_3.wear_armor(light_mail)
+champion_3.wear_headgear(black_hood)
+champion_3.description = "a duelist in a black hood, striking with twin blades"
+
+champion_4 = Champion("Talan")
+champion_4.logic = "reactive"
+champion_4.give_archetype(diabolist)
+champion_4.equip_weapons(polearm)
+champion_4.wear_armor(cape)
+champion_4.wear_headgear(moon_circlet)
+champion_4.description = "a grim spellblade in a cape, warding with a hooked polearm"
+
+minion_sentinel = Minion("Sentinel")
+minion_sentinel.logic = "defensive"
+minion_sentinel.give_archetype(gendarme)
+minion_sentinel.equip_weapons(shield_and_spear)
+minion_sentinel.wear_armor(heavy_mail)
+minion_sentinel.description = "a disciplined line-holder bearing a long spear and towered shield"
+
+minion_banneret = Minion("Banneret")
+minion_banneret.logic = "defensive"
+minion_banneret.give_archetype(herald)
+minion_banneret.equip_weapons(shield_and_sword)
+minion_banneret.wear_armor(light_mail)
+minion_banneret.description = "a standard-bearer who barks orders behind a bright shield"
+
+minion_ravager = Minion("Ravager")
+minion_ravager.logic = "aggressive"
+minion_ravager.give_archetype(furioso)
+minion_ravager.equip_weapons(bearded_axe)
+minion_ravager.wear_armor(bare)
+minion_ravager.description = "a frenzied berserker who charges with a chipped axe"
+
+minion_cutthroat = Minion("Cutthroat")
+minion_cutthroat.logic = "disruptive"
+minion_cutthroat.give_archetype(heathen)
+minion_cutthroat.equip_weapons(dagger_and_whip)
+minion_cutthroat.wear_armor(cape)
+minion_cutthroat.description = "a swaggering rogue who fights dirty from the shadows"
+
+minion_occultist = Minion("Occultist")
+minion_occultist.logic = "reactive"
+minion_occultist.give_archetype(diabolist)
+minion_occultist.equip_weapons(polearm)
+minion_occultist.wear_armor(brigandine)
+minion_occultist.description = "a grim summoner in patched brigandine, warding with a polearm"
+
+minion_dragoon = Minion("Dragoon")
+minion_dragoon.logic = "aggressive"
+minion_dragoon.give_archetype(gendarme)
+minion_dragoon.equip_weapons(paired_swords)
+minion_dragoon.wear_armor(suit_of_plate)
+minion_dragoon.description = "a plated shock trooper who advances with twin blades and iron resolve"
 
 
 # ------------------------------------------------------------------

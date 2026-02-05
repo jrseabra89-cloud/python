@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import h_actors
 import h_scenario
 import h_encounter
@@ -11,7 +13,10 @@ def show_title_and_intro():
     """Display the game title and optional intro text."""
     print("\n" + "="*60)
     print("HALL OF THE MOUNTAIN KING".center(60))
+    print("v0.11".center(60))
+    print("2026".center(60))
     print("="*60 + "\n")
+    input("Press Enter to continue...")
     
     skip = input("Skip intro? (y/n): ")
     
@@ -39,8 +44,8 @@ def new_game():
     if learn.lower() == "y":
         show_tutorial()
     party = h_actors.create_party ()
-    start_options = ["100", "150", "200", "250", "300", "400", "500", "600"]
-    choice = input("Choose starting scene (100, 150, 200, 250, 300, 400, 500, 600): ")
+    start_options = ["100", "600"]
+    choice = input("Choose starting scene (100, 600): ")
     if choice not in start_options:
         choice = "100"
     game_state["start_scene"] = choice
@@ -113,7 +118,7 @@ def show_tutorial():
 def run_game (game_state, party):
     current = game_state.get("start_scene", "100")
     while current != "END":
-        reorder = input("Switch party actor order before next scene? (y/n): ")
+        reorder = input("Switch party order before next scene? (y/n): ")
         if reorder.lower() == "y":
             remaining = list(party)
             new_order = []
@@ -124,7 +129,7 @@ def run_game (game_state, party):
                     print(f"{i}.\t{actor.name}")
                     options_index[i] = actor
                 try:
-                    choice_index = int(input("choose actor."))
+                    choice_index = int(input("Choose actor: "))
                 except ValueError:
                     choice_index = 1
                 if choice_index > len(remaining):
@@ -136,7 +141,7 @@ def run_game (game_state, party):
                 remaining.remove(chosen)
             party = new_order
         current, party = h_scenario.scenario_list[current](game_state, party)
-    h_encounter.major_report ("PROGRAM OVER".center(40))
+    h_encounter.major_report ("MADNESS REIGNS IN THE HALL OF THE MOUNTAIN KING".center(40))
 
 # ---------------------------------------------------------------------------
 # RUNNING

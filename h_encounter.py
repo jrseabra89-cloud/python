@@ -22,9 +22,9 @@ def disable_interactive_reports():
 
 
 def report(message, pause=None):
-    print("- - - - - - - - - - - - - - - - - - -\n")
-    print(message)
-    print("\n- - - - - - - - - - - - - - - - - - -")
+    print("- "*30 + "\n")
+    print(message.center(60))
+    print("\n" + "- "*30)
     # If pause is None, follow the module-level `interactive_reports` flag.
     if pause is None:
         if interactive_reports:
@@ -36,9 +36,9 @@ def report(message, pause=None):
 
 
 def major_report(message, pause=None):
-    print("* * * * * * * * * * * * * * * * * * *\n")
-    print(message.center(40))
-    print("\n* * * * * * * * * * * * * * * * * * *")
+    print("= "*30 + "\n")
+    print(message.center(60))
+    print("\n" + "= "*30)
     if pause is None:
         if interactive_reports:
             input()
@@ -57,7 +57,8 @@ def run_encounter (scene, party):
         for actor in scene.roster:
             desc = getattr(actor, "description", "")
             descriptions.append(desc if desc else actor.name)
-        report(f"The party encounters {', '.join(descriptions)}.")
+        formatted = "\n\n".join(descriptions)
+        report(f"The party encounters:\n\n{formatted}.")
 
     if getattr(scene, "event", None):
         event = scene.event
@@ -75,8 +76,8 @@ def run_encounter (scene, party):
         "Battle on, pawns of the gods!",
         "A meeting with fate!"
     ]
-    report(battle_start_message[randomizer])
-    major_report(f"Round: {encounter_state['round']}")
+    major_report(battle_start_message[randomizer].center(60))
+    report(f"Round: {encounter_state['round']}".center(60) )
     
     while encounter_phase != "END":
 
@@ -91,11 +92,20 @@ def run_encounter (scene, party):
         "Woe to the conquered.",
         "The names of the dead shall not be remembered."
     ]
-    report (battle_end_message[randomizer])
+    major_report(battle_end_message[randomizer].center(60))
 
     for enemy in scene.roster:
         enemy.refresh()
 
+    party = [actor for actor in party if encounter_state["actors"].get(actor, {}).get("KO") != True]
+    for actor in party:
+        stamina_restore = random.randint(3, 6)
+        fortune_restore = random.randint(1, 4)
+        actor.current_stamina = min(actor.current_stamina + stamina_restore, actor.stamina)
+        actor.current_fortune = min(actor.current_fortune + fortune_restore, actor.fortune)
+        report(
+            f"{actor.name} recovers {stamina_restore} stamina and {fortune_restore} fortune after the encounter."
+        )
     return party
 
 
@@ -283,7 +293,10 @@ def round_phase (encounter_phase, encounter_state):
                 bonus_data = encounter_state["stone_skin_buffs"][buffed_actor]
                 buffed_actor.current_reduction -= bonus_data["reduction_bonus"]
                 buffed_actor.current_power -= bonus_data["power_bonus"]
-                report(f"{buffed_actor.name}'s stone skin fades away.")
+                if bonus_data.get("juggernaut") == True and "juggernaut" in buffed_actor.features:
+                    buffed_actor.features.remove("juggernaut")
+                if encounter_state["actors"].get(buffed_actor, {}).get("KO") != True:
+                    report(f"{buffed_actor.name}'s stone skin fades away.")
                 actors_to_remove.append(buffed_actor)
         
         # Remove expired buffs
@@ -300,7 +313,8 @@ def round_phase (encounter_phase, encounter_state):
                 bonus_data = encounter_state["devils_dust_buffs"][buffed_actor]
                 buffed_actor.current_power -= bonus_data["power_bonus"]
                 buffed_actor.speed = "normal"
-                report(f"{buffed_actor.name}'s devil's dust effect wears off.")
+                if encounter_state["actors"].get(buffed_actor, {}).get("KO") != True:
+                    report(f"{buffed_actor.name}'s devil's dust effect wears off.")
                 actors_to_remove.append(buffed_actor)
         
         # Remove expired buffs
@@ -314,7 +328,10 @@ def party_turn (actor, encounter_state):
     actor.feeling (encounter_state)
 
     print (f"{actor.name}'s turn")
-    print(f"Stamina: {actor.current_stamina}/{actor.stamina} | Fortune: {actor.current_fortune}/{actor.fortune}")
+    weapon_name = actor.arms_slot1.name if actor.arms_slot1 else "None"
+    print(
+        f"Stamina: {actor.current_stamina}/{actor.stamina} | Fortune: {actor.current_fortune}/{actor.fortune} | Weapon: {weapon_name}"
+    )
     status_text = "Status: "
     for key, value in encounter_state["actors"][actor].items():
         if value == True:
@@ -323,6 +340,8 @@ def party_turn (actor, encounter_state):
                     status_text += f"({key})"
     print(status_text)
     input()
+
+    encounter_state["actors"][actor].pop("hide_blocked", None)
 
     while True:
         possible_actions = h_actions.filter_actions (actor, encounter_state, actor.special_actions | actor.arms_actions | h_actions.base_actions)
@@ -334,6 +353,8 @@ def party_turn (actor, encounter_state):
             continue
 
         encounter_state = user_action (actor, encounter_state)
+        if encounter_state.pop("action_failed", False):
+            continue
         break
 
     encounter_state["actors"][actor]["active"] = False
@@ -345,7 +366,10 @@ def party_turn (actor, encounter_state):
 
 def enemy_turn (actor, encounter_state):
     print (f"{actor.name}'s turn")
-    print(f"Stamina: {actor.current_stamina}/{actor.stamina} | Fortune: {actor.current_fortune}/{actor.fortune}")
+    weapon_name = actor.arms_slot1.name if actor.arms_slot1 else "None"
+    print(
+        f"Stamina: {actor.current_stamina}/{actor.stamina} | Fortune: {actor.current_fortune}/{actor.fortune} | Weapon: {weapon_name}"
+    )
     status_text = "Status: "
     for key, value in encounter_state["actors"][actor].items():
         if value == True:
@@ -354,11 +378,19 @@ def enemy_turn (actor, encounter_state):
     print(status_text)
     input()
 
-    possible_actions = h_actions.filter_actions (actor, encounter_state, h_actions.base_actions | actor.special_actions | actor.arms_actions)
+    encounter_state["actors"][actor].pop("hide_blocked", None)
 
-    enemy_action = h_actions.enemy_action_logic(actor, encounter_state, possible_actions)
+    while True:
+        possible_actions = h_actions.filter_actions (actor, encounter_state, h_actions.base_actions | actor.special_actions | actor.arms_actions)
 
-    encounter_state = enemy_action (actor, encounter_state)    
+        enemy_action = h_actions.enemy_action_logic(actor, encounter_state, possible_actions)
+        if enemy_action is None:
+            break
+
+        encounter_state = enemy_action (actor, encounter_state)
+        if encounter_state.pop("action_failed", False):
+            continue
+        break
 
     encounter_state["actors"][actor]["active"] = False
     encounter_state["actors"][actor]["done"] = True
@@ -366,8 +398,8 @@ def enemy_turn (actor, encounter_state):
     return encounter_state
 
 def upkeep_phase (encounter_phase, encounter_state):
-    major_report(f"Round {encounter_state['round']} upkeep".center(40))
-    input()
+    #major_report(f"Round {encounter_state['round']} upkeep".center(60))
+    #input()
     encounter_state["round"] += 1
     major_report(f"Round {encounter_state['round']}")
 
@@ -403,7 +435,7 @@ def check_end_condition (encounter_phase, encounter_state):
             enemy_KO = False
 
     if party_KO == True or enemy_KO == True:
-        major_report("The battle is over.".center(40))
+        #major_report("The battle is over.".center(60))
         encounter_phase = "END"
 
     return encounter_phase
