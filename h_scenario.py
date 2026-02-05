@@ -133,8 +133,7 @@ def scene_100_call(game_state, party):
     scene = scene_100
     h_encounter.report(f"{scene.name} - {scene.description}")
 
-    h_encounter.report(f"You've made your way to the halls of the mountain king. The air is thick with dust and the scent of decay.\nThe walls are lined with faded murals, their stories lost to time.\nWhy have you come? It doens't matter now...")
-
+    
     party = _resolve_encounter(scene, party)
 
     options = {

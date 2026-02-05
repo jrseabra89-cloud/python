@@ -22,11 +22,11 @@ def show_title_and_intro():
     
     if skip.lower() != "y":
         intro_text = """
-Far away, in a land caught between time and space, where the secrets of life and death lay,
+Far away, in a land caught between time and space,\nwhere the secrets of life and death lay,
 
 there is a castle of stone where the mountain king roams.
 
-His deep, dark eyes keep watch on  his kingdom and the mysteries that sleep safe inside.
+His deep, dark eyes keep watch on his kingdom and the mysteries that sleep safe inside.
 
 His hall, his towers of stone shall not be overthrown for eternity.
 
@@ -116,6 +116,9 @@ def show_tutorial():
     )
 
 def run_game (game_state, party):
+
+    h_encounter.report(f"You've made your way to the halls of the mountain king.\n\nYou stand in the feeble sun that does not give warmth.\n\nThe bleached walls are lined with faded murals, their stories lost to time.\n\nWhy have you come? Perhaps it doesn't matter now...")
+
     current = game_state.get("start_scene", "100")
     while current != "END":
         reorder = input("Switch party order before next scene? (y/n): ")

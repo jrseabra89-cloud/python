@@ -36,9 +36,9 @@ def report(message, pause=None):
 
 
 def major_report(message, pause=None):
-    print("= "*30 + "\n")
+    print("=="*30 + "\n")
     print(message.center(60))
-    print("\n" + "= "*30)
+    print("\n" + "=="*30)
     if pause is None:
         if interactive_reports:
             input()

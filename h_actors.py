@@ -233,7 +233,7 @@ class Actor:
             ],
             "hellfire": [
                 f"{self.name}'s flesh melts from their bones as they scream in agony.",
-                f"{self.name} body crumbles to cinders and dust.",
+                f"{self.name}'s body crumbles to cinders and dust.",
                 f"{self.name} explodes violently in a shower of gore.",
                 f"{self.name} is engulfed by hellfire and turn to ashes.",
             ],

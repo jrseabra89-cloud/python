@@ -118,89 +118,73 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
         a for a in allies if encounter_state["actors"][a].get("melee") == True
     ]
 
-    choice = None
+    def pick_first(candidates):
+        for action_name in candidates:
+            if action_name in possible_actions:
+                return action_name
+        return None
+
+    def weighted_choice(primary, secondary, conditional, condition_met, fallback):
+        if condition_met:
+            conditional_pick = pick_first(conditional)
+            if conditional_pick:
+                return conditional_pick
+
+        roll = random.randint(1, 6)
+        if roll <= 4:
+            choice_name = pick_first(primary)
+        else:
+            choice_name = pick_first(secondary)
+
+        if choice_name is None:
+            choice_name = pick_first(fallback)
+
+        return choice_name
 
     if logic == "disruptive":
-        if not actor_melee and "prowl" in possible_actions:
-            choice = "prowl"
-        elif actor_melee and "dirty trick" in possible_actions:
-            choice = "dirty trick"
-        elif "diablerie" in possible_actions:
-            choice = "diablerie"
-        elif "hide" in possible_actions:
-            choice = "hide"
-        elif actor_melee and "retreat" in possible_actions:
-            choice = "retreat"
-        elif "skirmish" in possible_actions:
-            choice = "skirmish"
-        elif "trip" in possible_actions:
-            choice = "trip"
-        elif "smash" in possible_actions:
-            choice = "smash"
-        elif "fight" in possible_actions:
-            choice = "fight"
+        choice = weighted_choice(
+            primary=["hide", "skirmish", "prowl"],
+            secondary=["trip", "smash", "fight"],
+            conditional=["dirty trick", "diablerie"],
+            condition_met=actor_momentum or actor_melee,
+            fallback=["retreat", "guard", "block", "fight"],
+        )
 
     elif logic == "aggressive":
-        for action_name in [
-            "hack and slash",
-            "fight",
-            "smash",
-            "stab",
-            "trip",
-            "skirmish",
-            "diablerie",
-        ]:
-            if action_name in possible_actions:
-                choice = action_name
-                break
+        choice = weighted_choice(
+            primary=["fight", "hack and slash", "smash"],
+            secondary=["stab", "trip", "skirmish"],
+            conditional=["hack and slash"],
+            condition_met=actor_momentum,
+            fallback=["fight", "guard", "block"],
+        )
 
     elif logic == "defensive":
-        if allies_need_help and "deliverance" in possible_actions:
-            choice = "deliverance"
-        elif allies and "rally" in possible_actions:
-            choice = "rally"
-        elif allies and "decisive order" in possible_actions:
-            choice = "decisive order"
-        elif "block" in possible_actions:
-            choice = "block"
-        else:
-            for action_name in ["fight", "smash", "stab", "skirmish", "trip", "block"]:
-                if action_name in possible_actions:
-                    choice = action_name
-                    break
+        choice = weighted_choice(
+            primary=["guard", "block", "rally"],
+            secondary=["fight", "trip", "skirmish"],
+            conditional=["deliverance", "decisive order"],
+            condition_met=bool(allies_need_help),
+            fallback=["guard", "block", "retreat", "fight"],
+        )
 
     elif logic == "reactive":
-        if actor_melee and "dirty trick" in possible_actions:
-            choice = "dirty trick"
-        elif not actor_melee and "prowl" in possible_actions:
-            choice = "prowl"
-        elif allies_need_help and "deliverance" in possible_actions:
-            choice = "deliverance"
-        elif actor_melee and not actor_momentum and "retreat" in possible_actions:
-            choice = "retreat"
-        elif not_in_melee_targets and "skirmish" in possible_actions:
-            choice = "skirmish"
-        elif guard_block_targets and "trip" in possible_actions:
-            choice = "trip"
-        elif actor_melee and (low_stamina_targets or soft_targets):
-            for action_name in ["fight", "smash", "stab", "trip", "hack and slash"]:
-                if action_name in possible_actions:
-                    choice = action_name
-                    break
-        elif allies_in_melee and "decisive order" in possible_actions:
-            choice = "decisive order"
-        elif "guard" in possible_actions:
-            choice = "guard"
-        elif "block" in possible_actions:
-            choice = "block"
+        choice = weighted_choice(
+            primary=["skirmish", "trip", "guard"],
+            secondary=["retreat", "fight", "block"],
+            conditional=["dirty trick", "decisive order"],
+            condition_met=actor_momentum and actor_melee,
+            fallback=["guard", "retreat", "fight"],
+        )
 
-    if choice is None:
-        if "fight" in possible_actions:
-            choice = "fight"
-        elif "skirmish" in possible_actions:
-            choice = "skirmish"
-        elif "guard" in possible_actions:
-            choice = "guard"
+    else:
+        choice = weighted_choice(
+            primary=["fight", "skirmish", "guard"],
+            secondary=["trip", "block"],
+            conditional=["fight"],
+            condition_met=actor_momentum,
+            fallback=["guard", "fight"],
+        )
 
     if choice is None:
         return next(iter(possible_actions.values())) if possible_actions else None
@@ -1240,17 +1224,40 @@ def use_item (actor, encounter_state):
     return encounter_state
 
 def observe(actor, encounter_state):
-    enemies = [e for e in encounter_state.get("enemy", []) if encounter_state["actors"][e]["KO"] == False]
-    if not enemies:
-        h_encounter.report("There are no enemies to observe.")
-        return encounter_state
+    lines = ["Observation:"]
 
-    descriptions = []
-    for enemy in enemies:
-        desc = getattr(enemy, "description", "")
-        descriptions.append(desc if desc else enemy.name)
+    def format_actor_status(target, target_state):
+        status_flags = [
+            key
+            for key, value in target_state.items()
+            if value == True and key not in {"active", "party"}
+        ]
+        status_text = f"Status: {', '.join(status_flags)}" if status_flags else "Status: none"
+        weapon_name = target.arms_slot1.name if target.arms_slot1 else "None"
+        return (
+            f"- {target.name} | Stamina: {target.current_stamina}/{target.stamina} "
+            f"| Fortune: {target.current_fortune}/{target.fortune} | Weapon: {weapon_name} | {status_text}"
+        )
 
-    h_encounter.report(f"You observe: {', '.join(descriptions)}.")
+    party_members = [p for p in encounter_state.get("party", [])]
+    enemy_members = [e for e in encounter_state.get("enemy", [])]
+
+    lines.append("Party:")
+    if party_members:
+        for member in party_members:
+            lines.append(format_actor_status(member, encounter_state["actors"][member]))
+    else:
+        lines.append("- (none)")
+
+    lines.append("")
+    lines.append("Enemies:")
+    if enemy_members:
+        for enemy in enemy_members:
+            lines.append(format_actor_status(enemy, encounter_state["actors"][enemy]))
+    else:
+        lines.append("- (none)")
+
+    h_encounter.report("\n".join(lines))
     return encounter_state
 
 #use_item.description = "Use an item from inventory"
