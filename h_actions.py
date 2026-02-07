@@ -20,6 +20,14 @@ SPELLS = {
     "stone skin": {
         "rank": 8,
         "description": "stone skin: harden the caster's skin for protection (rank 8)",
+    },
+    "grasp of the dead": {
+        "rank": 8,
+        "description": "grasp of the dead: imprison a target, also reducing their defense for 8 turns.",
+    },
+    "diabolic weapon": {
+        "rank": 8,
+        "description": "diabolic weapon: empower an ally's strikes for 8 turns.",
     }
 } 
 
@@ -192,6 +200,17 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
     return possible_actions.get(choice)
 
 
+MELEE_ENTRY_ACTIONS = {
+    "fight",
+    "smash",
+    "hack and slash",
+    "trip",
+    "stab",
+}
+
+def is_melee_entry_action(action_name):
+    return action_name in MELEE_ENTRY_ACTIONS
+
 def filter_actions (actor, encounter_state, action_dict):
     # work on a shallow copy to avoid mutating the original dict
     action_options = dict(action_dict) if action_dict is not None else {}
@@ -202,6 +221,7 @@ def filter_actions (actor, encounter_state, action_dict):
         action_options.pop("smash", None)
         action_options.pop("trip", None)
         action_options.pop("stab", None)
+        action_options.pop("hack and slash", None)
 
     if encounter_state["actors"][actor].get("melee") == True:
         action_options.pop("skirmish", None)
@@ -224,7 +244,53 @@ def filter_actions (actor, encounter_state, action_dict):
     if encounter_state["actors"][actor].get("hide_blocked") == True:
         action_options.pop("hide", None)
 
+    if encounter_state["actors"][actor].get("root") == True:
+        action_options.pop("hide", None)
+        action_options.pop("block", None)
+        action_options.pop("retreat", None)
+        action_options.pop("dirty trick", None)
+
+        if encounter_state["actors"][actor].get("melee") == False:
+            for action_name in MELEE_ENTRY_ACTIONS:
+                action_options.pop(action_name, None)
+
     return action_options
+
+def root_blocks_action(
+    actor,
+    encounter_state,
+    *,
+    enter_melee=False,
+    exit_melee=False,
+    movement=False,
+    message=None,
+    block_hide=False,
+):
+    if encounter_state["actors"][actor].get("root") != True:
+        return False
+
+    actor_state = encounter_state["actors"][actor]
+
+    if enter_melee and actor_state.get("melee") == False:
+        h_encounter.report(message or f"{actor.name} is rooted and cannot advance into melee.")
+        encounter_state["action_failed"] = True
+        return True
+
+    if exit_melee and actor_state.get("melee") == True:
+        h_encounter.report(message or f"{actor.name} is rooted and cannot break away from melee.")
+        encounter_state["action_failed"] = True
+        if block_hide:
+            actor_state["hide_blocked"] = True
+        return True
+
+    if movement:
+        h_encounter.report(message or f"{actor.name} is rooted and cannot move.")
+        encounter_state["action_failed"] = True
+        if block_hide:
+            actor_state["hide_blocked"] = True
+        return True
+
+    return False
 
 def choose_target (dictionary):
 
@@ -348,14 +414,11 @@ def get_target (actor, encounter_state):
 
 def check_combat_modifiers (actor, encounter_state, target):
 
-    adder = actor.skill
+    adder = actor.fortune if "mystic aim" in actor.features else actor.skill
     difficulty = target.defense
 
     if encounter_state["actors"][actor]["momentum"] == True:
-        if "reach" not in target.features:
-            adder += 4
-        else:
-            h_encounter.report (f"{target.name} halts {actor.name}'s momentum.")
+        adder += 4
     
     if encounter_state["actors"][actor]["daze"] == True:
         adder -= 4    
@@ -371,8 +434,15 @@ def check_combat_modifiers (actor, encounter_state, target):
 
     return adder, difficulty
 
+def get_attack_mitigation(attacker, target, encounter_state, default_mitigation):
+    if encounter_state.get("diabolic_weapon_buffs", {}).get(attacker):
+        return target.current_insulation
+    return default_mitigation
+
 
 def fight (actor, encounter_state):
+    if root_blocks_action(actor, encounter_state, enter_melee=True):
+        return encounter_state
 
     available_targets = filter_targets(actor, encounter_state)
 
@@ -398,12 +468,14 @@ def fight (actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage, target.current_reduction, "pierce")
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage, mitigation, "pierce")
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage+4, target.current_reduction, "pierce")
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage+4, mitigation, "pierce")
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
@@ -417,6 +489,8 @@ def fight (actor, encounter_state):
     return encounter_state
 
 def smash (actor, encounter_state):
+    if root_blocks_action(actor, encounter_state, enter_melee=True):
+        return encounter_state
 
     available_targets = filter_targets(actor, encounter_state)
 
@@ -444,13 +518,15 @@ def smash (actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage+2, target.current_reduction, actor.damage_type)
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage+2, mitigation, actor.damage_type)
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
         cause_daze (target, encounter_state)
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage+6, target.current_reduction, actor.damage_type)
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage+6, mitigation, actor.damage_type)
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
         cause_daze (target, encounter_state)
@@ -464,6 +540,8 @@ def smash (actor, encounter_state):
     return encounter_state
 
 def hack_and_slash (actor, encounter_state):
+    if root_blocks_action(actor, encounter_state, enter_melee=True):
+        return encounter_state
 
     available_targets = filter_targets(actor, encounter_state)
     blocking_targets = {k: v for k, v in available_targets.items() if v.get("block") == True}
@@ -494,13 +572,15 @@ def hack_and_slash (actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage, target.current_reduction, actor.damage_type)
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage, mitigation, actor.damage_type)
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
         cause_vulnerable (actor, encounter_state)
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage+4, target.current_reduction, actor.damage_type)
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage+4, mitigation, actor.damage_type)
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
         cause_vulnerable (actor, encounter_state)
@@ -514,6 +594,8 @@ def hack_and_slash (actor, encounter_state):
     return encounter_state
 
 def trip (actor, encounter_state):
+    if root_blocks_action(actor, encounter_state, enter_melee=True):
+        return encounter_state
 
     available_targets = filter_targets(actor, encounter_state)
 
@@ -558,6 +640,13 @@ def trip (actor, encounter_state):
 
 
 def dirty_trick(actor, encounter_state):
+    if root_blocks_action(
+        actor,
+        encounter_state,
+        exit_melee=True,
+        message=f"{actor.name} is rooted and cannot shift in melee.",
+    ):
+        return encounter_state
     # Dirty trick: can only be used in melee; actor loses melee status after use
     if encounter_state["actors"][actor]["melee"] != True:
         h_encounter.report(f"{actor.name} is not in melee and cannot use dirty trick.")
@@ -617,8 +706,8 @@ def diablerie(actor, encounter_state):
     and the spell's rank as the difficulty. On a failed roll the caster suffers
     1-4 backlash damage reduced by their insulation and the spell fails."""
 
-    # Rank mapping: lord (8), count (10), duke (12)
-    rank_names = {8: "summon lord", 11: "summon count", 14: "summon duke"}
+    # Rank mapping: baron (8), count (11), duke (14)
+    rank_names = {8: "baron", 11: "count", 14: "duke"}
     rank_values = [8, 11, 14]
 
     # choose a spell
@@ -661,6 +750,8 @@ def diablerie(actor, encounter_state):
             rank_choice = 1
         rank = rank_index[rank_choice]
 
+    fortune_cost = rank_values.index(rank) + 1
+
     spell = dict(SPELLS[spell_name])
     spell["rank"] = rank
     base_rank = SPELLS[spell_name]["rank"]
@@ -678,9 +769,11 @@ def diablerie(actor, encounter_state):
         damage(actor, encounter_state, backlash, actor.current_insulation, spell.get("damage_type", "hellfire"))
         return encounter_state
 
-    # On success, deduct 1 fortune and report
-    actor.current_fortune = max(0, actor.current_fortune - 1)
-    h_encounter.report(f"{actor.name}'s fortune is bound to the spell ({actor.current_fortune} remaining).")
+    # On success, deduct fortune cost based on rank and report
+    actor.current_fortune = max(0, actor.current_fortune - fortune_cost)
+    h_encounter.report(
+        f"{actor.name}'s fortune is bound to the spell (-{fortune_cost}, {actor.current_fortune} remaining)."
+    )
 
     # On success, resolve the spell
     if spell_name == "inferno":
@@ -783,20 +876,84 @@ def diablerie(actor, encounter_state):
             actor.features.append("juggernaut")
         
         h_encounter.report(
-            f"{actor.name} gains +{reduction_bonus} reduction, +{power_bonus} power, and juggernaut for 4 turns."
+            f"{actor.name} gains +{reduction_bonus} reduction, +{power_bonus} power, and juggernaut for 8 turns."
         )
         
         # Track the buff duration in encounter_state (if not already initialized)
         if "stone_skin_buffs" not in encounter_state:
             encounter_state["stone_skin_buffs"] = {}
         
-        # Set duration to 4 turns
+        # Set duration to 8 turns
         encounter_state["stone_skin_buffs"][actor] = {
-            "duration": 4,
+            "duration": 8,
             "reduction_bonus": reduction_bonus,
             "power_bonus": power_bonus,
             "juggernaut": True,
         }
+
+    elif spell_name == "diabolic weapon":
+        available_targets = {
+            k: v
+            for k, v in encounter_state["actors"].items()
+            if v["KO"] == False and v["party"] == encounter_state["actors"][actor]["party"]
+        }
+        if actor.logic != None:
+            target = random.choice(list(available_targets.keys())) if available_targets else None
+        else:
+            target = choose_target(available_targets)
+
+        if not target:
+            return encounter_state
+
+        power_bonus = 2 + rank_steps
+
+        if "diabolic_weapon_buffs" not in encounter_state:
+            encounter_state["diabolic_weapon_buffs"] = {}
+
+        if target in encounter_state["diabolic_weapon_buffs"]:
+            previous = encounter_state["diabolic_weapon_buffs"][target]
+            target.current_power -= previous["power_bonus"]
+
+        target.current_power += power_bonus
+        encounter_state["diabolic_weapon_buffs"][target] = {
+            "duration": 8,
+            "power_bonus": power_bonus,
+        }
+
+        h_encounter.report(
+            f"the {rank_names[rank]} binds a diabolic weapon to {target.name}, granting +{power_bonus} power for 8 turns."
+        )
+
+    elif spell_name == "grasp of the dead":
+        available_targets = filter_targets(actor, encounter_state, ignore_block=True)
+        if actor.logic != None:
+            target = logic_target(available_targets, actor, encounter_state)
+        else:
+            target = choose_target(available_targets)
+        if not target:
+            return encounter_state
+
+        defense_penalty = 4 + (2 * rank_steps)
+
+        if "evil_eye_debuffs" not in encounter_state:
+            encounter_state["evil_eye_debuffs"] = {}
+
+        if target in encounter_state["evil_eye_debuffs"]:
+            previous = encounter_state["evil_eye_debuffs"][target]
+            target.defense += previous["defense_penalty"]
+
+        target.defense -= defense_penalty
+
+        encounter_state["evil_eye_debuffs"][target] = {
+            "duration": 8,
+            "defense_penalty": defense_penalty,
+        }
+
+        cause_root(target, encounter_state)
+
+        h_encounter.report(
+            f"the {rank_names[rank]} marks {target.name} with grasp of the dead, reducing defense by {defense_penalty} for 8 turns."
+        )
 
     return encounter_state
 
@@ -843,12 +1000,14 @@ def prowl(actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage, target.current_reduction, actor.damage_type)
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage, mitigation, actor.damage_type)
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage+4, target.current_reduction, actor.damage_type)
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage+4, mitigation, actor.damage_type)
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
@@ -862,6 +1021,8 @@ def prowl(actor, encounter_state):
     return encounter_state
 
 def stab (actor, encounter_state):
+    if root_blocks_action(actor, encounter_state, enter_melee=True):
+        return encounter_state
 
     available_targets = filter_targets(actor, encounter_state)
 
@@ -884,17 +1045,19 @@ def stab (actor, encounter_state):
 
     adder, difficulty = check_combat_modifiers (actor, encounter_state, target)
     
-    adder -= 4
+    adder -= 2
 
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage + random.randint (1, 4), 0, "pierce")
+        mitigation = get_attack_mitigation(actor, target, encounter_state, 0)
+        damage (target, encounter_state, attack_damage + random.randint (1, 4), mitigation, "pierce")
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage + 4, 0, "pierce")
+        mitigation = get_attack_mitigation(actor, target, encounter_state, 0)
+        damage (target, encounter_state, attack_damage + 4, mitigation, "pierce")
         encounter_state["actors"][actor]["momentum"] = True
         encounter_state["actors"][target]["momentum"] = False
 
@@ -935,12 +1098,14 @@ def skirmish (actor, encounter_state):
     result = stat_test (adder, difficulty)
 
     if result == "success":
-        damage (target, encounter_state, attack_damage, target.current_reduction, "pierce")
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage, mitigation, "pierce")
         encounter_state["actors"][target]["momentum"] = False
         cause_pin (target, encounter_state)
 
     elif result == "critical":
-        damage (target, encounter_state, attack_damage+4, target.current_reduction, "pierce")
+        mitigation = get_attack_mitigation(actor, target, encounter_state, target.current_reduction)
+        damage (target, encounter_state, attack_damage+4, mitigation, "pierce")
         encounter_state["actors"][target]["momentum"] = False
         cause_pin (target, encounter_state)
 
@@ -958,6 +1123,13 @@ def guard (actor, encounter_state):
     return encounter_state
 
 def block (actor, encounter_state):
+    if root_blocks_action(
+        actor,
+        encounter_state,
+        movement=True,
+        message=f"{actor.name} is rooted and cannot reposition to block.",
+    ):
+        return encounter_state
 
     encounter_state["actors"][actor]["block"] = True
     encounter_state["actors"][actor]["guard"] = True
@@ -966,6 +1138,14 @@ def block (actor, encounter_state):
     return encounter_state
 
 def hide(actor, encounter_state):
+    if root_blocks_action(
+        actor,
+        encounter_state,
+        movement=True,
+        message=f"{actor.name} is rooted and cannot hide.",
+        block_hide=True,
+    ):
+        return encounter_state
     if encounter_state["actors"][actor]["melee"] == True:
         h_encounter.report(f"{actor.name} cannot hide while in melee.")
         encounter_state["actors"][actor]["hide_blocked"] = True
@@ -993,6 +1173,13 @@ def hide(actor, encounter_state):
     return encounter_state
 
 def retreat (actor, encounter_state):
+    if root_blocks_action(
+        actor,
+        encounter_state,
+        movement=True,
+        message=f"{actor.name} is rooted and cannot retreat.",
+    ):
+        return encounter_state
 
     encounter_state["actors"][actor]["melee"] = False
     encounter_state["actors"][actor]["momentum"] = False
@@ -1260,6 +1447,19 @@ def observe(actor, encounter_state):
     h_encounter.report("\n".join(lines))
     return encounter_state
 
+def recover(actor, encounter_state):
+    restore = random.randint(3, 6)
+    max_recover = max(1, actor.stamina // 2)
+    new_stamina = min(actor.current_stamina + restore, max_recover)
+    actual_restore = max(0, new_stamina - actor.current_stamina)
+    actor.current_stamina = new_stamina
+
+    h_encounter.report(
+        f"{actor.name} recovers {actual_restore} stamina (up to {max_recover})."
+    )
+    encounter_state["actors"][actor]["momentum"] = False
+    return encounter_state
+
 #use_item.description = "Use an item from inventory"
 
 base_actions = {
@@ -1273,7 +1473,8 @@ base_actions = {
     "aid" : aid,
     "swap" : swap_arms,
     "use item" : use_item,
-    "observe" : observe
+    "observe" : observe,
+    "recover" : recover
 }
 
 
@@ -1348,11 +1549,13 @@ def riposte_trigger (actor, encounter_state, target):
             result = stat_test (adder, difficulty)
 
             if result == "success":
-                damage (actor, encounter_state, attack_damage, actor.current_reduction, target.damage_type)
+                mitigation = get_attack_mitigation(target, actor, encounter_state, actor.current_reduction)
+                damage (actor, encounter_state, attack_damage, mitigation, target.damage_type)
                 encounter_state["actors"][actor]["momentum"] = False
 
             elif result == "critical":
-                damage (actor, encounter_state, attack_damage+4, actor.current_reduction, target.damage_type)
+                mitigation = get_attack_mitigation(target, actor, encounter_state, actor.current_reduction)
+                damage (actor, encounter_state, attack_damage+4, mitigation, target.damage_type)
                 encounter_state["actors"][actor]["momentum"] = False
 
             else:
@@ -1440,6 +1643,13 @@ def cause_blind (actor, encounter_state):
     message = f"{actor.name} is blinded."
     cause_status (actor, encounter_state, status, message)
 
+def cause_root (actor, encounter_state):
+    if encounter_state["actors"].get(actor, {}).get("KO") == True:
+        return
+    status = "root"
+    message = f"{actor.name} is rooted."
+    cause_status (actor, encounter_state, status, message)
+
 def remove_guard (actor, encounter_state):
     status = "guard"
     message = f"{actor.name} is no longer guarding."
@@ -1478,4 +1688,9 @@ def remove_pin (actor, encounter_state):
 def remove_blind (actor, encounter_state):
     status = "blind"
     message = f"{actor.name} is no longer blinded."
+    remove_status (actor, encounter_state, status, message)
+
+def remove_root (actor, encounter_state):
+    status = "root"
+    message = f"{actor.name} is no longer rooted."
     remove_status (actor, encounter_state, status, message)

@@ -4,7 +4,6 @@ import h_actors
 import h_encounter
 import h_actions
 
-
 class Scene:
     def __init__(self, name):
         self.name = name
@@ -13,7 +12,6 @@ class Scene:
         self.event = None
         self.aftermath = ""
         self.roster_options = []
-
 
 # ---------------------------------------------------------------------------
 # Scenes
@@ -821,36 +819,33 @@ last.aftermath = "Only the drip of water answers you now. The castle feels older
 scene_100 = Scene("Entering the gates")
 scene_100.description = "A great gate looms before the party, it's open like a gapping maw as if ready to devour them."
 scene_100.roster_options = [
-    [h_actors.minion_disruptive, h_actors.minion_aggressive],
-    [h_actors.minion_disruptive_2, h_actors.minion_aggressive_2],
-    [h_actors.minion_disruptive, h_actors.minion_reactive],
-    [h_actors.minion_aggressive, h_actors.minion_reactive_2],
+    [h_actors.minion_disruptive, h_actors.minion_aggressive, h_actors.minion_reactive],
+    [h_actors.minion_disruptive_2, h_actors.minion_aggressive_2, h_actors.minion_reactive_2],
+    [h_actors.minion_disruptive, h_actors.minion_reactive, h_actors.minion_cutthroat],
+    [h_actors.minion_aggressive, h_actors.minion_reactive_2, h_actors.minion_banneret],
 ]
-scene_100.event = {
-    "message": "The party is surprised and slows to react.",
-    "effect": "party_slow_first_round",
-}
 scene_100.aftermath = (
     "They were rail-thin and scar-latticed, fighting like starved dogs. "
     "Whatever drives them is older than hunger."
+    "High above the walls you see a figure observing you, they linger for a moment then leave."
 )
 
 scene_105 = Scene("The drowned trench")
 scene_105.description = "A trench half-full of rainwater hides broken pikes and slick stones."
 scene_105.roster_options = [
-    [h_actors.minion_cutthroat, h_actors.minion_reactive],
-    [h_actors.minion_disruptive_3, h_actors.minion_aggressive],
-    [h_actors.minion_ravager],
+    [h_actors.minion_cutthroat, h_actors.minion_reactive, h_actors.minion_disruptive_3],
+    [h_actors.minion_disruptive_3, h_actors.minion_aggressive, h_actors.minion_reactive_3],
+    [h_actors.minion_ravager, h_actors.minion_aggressive_3],
 ]
 scene_105.aftermath = "Water sloshes in your boots, cold and heavy."
 
 scene_110 = Scene("The outer wards")
 scene_110.description = "Brambles scrape stone and old banners hang in tatters over a narrow ward."
 scene_110.roster_options = [
-    [h_actors.minion_cutthroat, h_actors.minion_aggressive],
-    [h_actors.minion_disruptive, h_actors.minion_reactive],
-    [h_actors.minion_ravager],
-    [h_actors.minion_disruptive_2, h_actors.minion_aggressive_2],
+    [h_actors.minion_cutthroat, h_actors.minion_aggressive, h_actors.minion_reactive],
+    [h_actors.minion_disruptive, h_actors.minion_reactive, h_actors.minion_aggressive_2],
+    [h_actors.minion_ravager, h_actors.minion_cutthroat],
+    [h_actors.minion_disruptive_2, h_actors.minion_aggressive_2, h_actors.minion_reactive_2],
 ]
 scene_110.aftermath = "The ward reeks of wet iron and old ash."
 
@@ -901,23 +896,19 @@ scene_180.aftermath = "Someone fled through here, and they were not alone."
 scene_190 = Scene("The red tunnel")
 scene_190.description = "Rust stains the stones in streaks, and the air tastes metallic."
 scene_190.roster_options = [
-    [h_actors.minion_ravager, h_actors.minion_aggressive_2],
-    [h_actors.minion_cutthroat, h_actors.minion_disruptive_2],
+    [h_actors.minion_ravager, h_actors.minion_aggressive_2, h_actors.minion_reactive_2],
+    [h_actors.minion_cutthroat, h_actors.minion_disruptive_2, h_actors.minion_aggressive],
 ]
 scene_190.aftermath = "The tunnel seems to remember old blood."
 
 scene_200 = Scene("The courtyard")
 scene_200.description = "The vacant courtyard is littered with broken weapons and shattered armor."
 scene_200.roster_options = [
-    [h_actors.minion_defensive, h_actors.minion_reactive],
-    [h_actors.minion_defensive_2, h_actors.minion_reactive_2],
-    [h_actors.minion_defensive, h_actors.minion_aggressive],
-    [h_actors.minion_defensive_3, h_actors.minion_reactive_3],
+    [h_actors.minion_defensive, h_actors.minion_reactive, h_actors.minion_banneret],
+    [h_actors.minion_defensive_2, h_actors.minion_reactive_2, h_actors.minion_sentinel],
+    [h_actors.minion_defensive, h_actors.minion_aggressive, h_actors.minion_reactive_3],
+    [h_actors.minion_defensive_3, h_actors.minion_reactive_3, h_actors.minion_cutthroat],
 ]
-scene_200.event = {
-    "message": "The enemy is filled with bloodlust.",
-    "effect": "enemy_momentum",
-}
 scene_200.aftermath = "Half their gear was rust and bone, half was stolen steel. The courtyard is a museum of bad ends."
 
 scene_205 = Scene("The ash square")
@@ -1024,10 +1015,6 @@ scene_300.roster_options = [
     [h_actors.minion_reactive_2],
     [h_actors.minion_cutthroat],
 ]
-scene_300.event = {
-    "message": "A brief calm steels the party's guard.",
-    "effect": "party_guard",
-}
 scene_300.aftermath = "A single fighter held the line like a ritual, not a fight. The stones watch, unmoved."
 
 scene_305 = Scene("The ruined ward")
@@ -1102,10 +1089,6 @@ scene_400.roster_options = [
     [h_actors.minion_aggressive, h_actors.minion_defensive_2, h_actors.minion_reactive_3],
     [h_actors.minion_banneret, h_actors.minion_ravager, h_actors.minion_cutthroat],
 ]
-scene_400.event = {
-    "message": "The foes lock shields and brace themselves.",
-    "effect": "enemy_guard",
-}
 scene_400.aftermath = "Splintered shields, perfect formation. Discipline without hope is a terrible thing to see."
 
 scene_420 = Scene("The shattered bridge")
@@ -1139,10 +1122,6 @@ scene_500.roster_options = [
     [h_actors.minion_occultist, h_actors.minion_ravager, h_actors.minion_banneret],
     [h_actors.champion_1, h_actors.minion_ravager, h_actors.minion_banneret],
 ]
-scene_500.event = {
-    "message": "A chilling dread leaves the party exposed.",
-    "effect": "party_vulnerable",
-}
 scene_500.aftermath = "They died shivering, not from the cold but from something below. The dark feels awake."
 
 scene_520 = Scene("The sinkhole")
@@ -1164,10 +1143,6 @@ scene_600.roster_options = [
     [h_actors.champion_2, h_actors.champion_3],
     [h_actors.champion_4, h_actors.minion_defensive_3],
 ]
-scene_600.event = {
-    "message": "At the summit, the enemy surges with momentum.",
-    "effect": "enemy_momentum",
-}
 scene_600.aftermath = "At the height, there is no king to await you - you are all that is left.\nThe secret of life and death is finnally yours to keep.\nNow you shall roam this hall for eternity with insanity and the power that it brings."
 
 scenario_list = {

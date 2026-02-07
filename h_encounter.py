@@ -60,6 +60,8 @@ def run_encounter (scene, party):
         formatted = "\n\n".join(descriptions)
         report(f"The party encounters:\n\n{formatted}.")
 
+    trigger_special_event(encounter_state)
+
     if getattr(scene, "event", None):
         event = scene.event
         event_message = event.get("message")
@@ -100,7 +102,7 @@ def run_encounter (scene, party):
     party = [actor for actor in party if encounter_state["actors"].get(actor, {}).get("KO") != True]
     for actor in party:
         stamina_restore = random.randint(3, 6)
-        fortune_restore = random.randint(1, 4)
+        fortune_restore = random.randint(0, 2)
         actor.current_stamina = min(actor.current_stamina + stamina_restore, actor.stamina)
         actor.current_fortune = min(actor.current_fortune + fortune_restore, actor.fortune)
         report(
@@ -136,7 +138,64 @@ def apply_scene_event(encounter_state, event):
         for actor in encounter_state.get("party", []):
             encounter_state["actors"][actor]["vulnerable"] = True
 
+    elif effect == "party_momentum":
+        for actor in encounter_state.get("party", []):
+            encounter_state["actors"][actor]["momentum"] = True
+
+    elif effect == "enemy_vulnerable":
+        for actor in encounter_state.get("enemy", []):
+            encounter_state["actors"][actor]["vulnerable"] = True
+
+    elif effect == "enemy_slow_first_round":
+        speed_overrides = {}
+        for actor in encounter_state.get("enemy", []):
+            speed_overrides[actor] = encounter_state["actors"][actor]["speed"]
+            encounter_state["actors"][actor]["speed"] = "slow"
+        encounter_state["speed_overrides"] = speed_overrides
+        encounter_state["restore_speeds_round"] = encounter_state["round"] + 1
+
     return encounter_state
+
+
+def trigger_special_event(encounter_state):
+    special_events = [
+        {
+            "message": "A sudden pall slows your reactions.",
+            "effect": "party_slow_first_round",
+        },
+        {
+            "message": "The enemy surges with murderous momentum.",
+            "effect": "enemy_momentum",
+        },
+        {
+            "message": "The enemy locks shields and braces.",
+            "effect": "enemy_guard",
+        },
+        {
+            "message": "Your formation tightens, shields high.",
+            "effect": "party_guard",
+        },
+        {
+            "message": "A chilling dread leaves you exposed.",
+            "effect": "party_vulnerable",
+        },
+        {
+            "message": "Resolve flares and quickens your strike.",
+            "effect": "party_momentum",
+        },
+        {
+            "message": "The enemy is rattled and off-balance.",
+            "effect": "enemy_vulnerable",
+        },
+        {
+            "message": "The enemy hesitates, their pace faltering.",
+            "effect": "enemy_slow_first_round",
+        },
+    ]
+
+    event = random.choice(special_events)
+    report(event["message"])
+    apply_scene_event(encounter_state, event)
 
 def new_encounter (scene, party):
     encounter_state = {}
@@ -175,6 +234,7 @@ def new_encounter (scene, party):
             "blind" : False,
             "pin" : False,
             "disable" : False,
+            "root" : False,
             "enraged" : False
         }
 
@@ -321,6 +381,37 @@ def round_phase (encounter_phase, encounter_state):
         for actor_to_remove in actors_to_remove:
             del encounter_state["devils_dust_buffs"][actor_to_remove]
 
+    # Decrement diabolic weapon buff durations
+    if "diabolic_weapon_buffs" in encounter_state:
+        actors_to_remove = []
+        for buffed_actor in encounter_state["diabolic_weapon_buffs"]:
+            encounter_state["diabolic_weapon_buffs"][buffed_actor]["duration"] -= 1
+            if encounter_state["diabolic_weapon_buffs"][buffed_actor]["duration"] <= 0:
+                bonus_data = encounter_state["diabolic_weapon_buffs"][buffed_actor]
+                buffed_actor.current_power -= bonus_data["power_bonus"]
+                if encounter_state["actors"].get(buffed_actor, {}).get("KO") != True:
+                    report(f"{buffed_actor.name}'s diabolic weapon fades.")
+                actors_to_remove.append(buffed_actor)
+
+        for actor_to_remove in actors_to_remove:
+            del encounter_state["diabolic_weapon_buffs"][actor_to_remove]
+
+    # Decrement evil eye debuff durations
+    if "evil_eye_debuffs" in encounter_state:
+        actors_to_remove = []
+        for debuffed_actor in encounter_state["evil_eye_debuffs"]:
+            encounter_state["evil_eye_debuffs"][debuffed_actor]["duration"] -= 1
+            if encounter_state["evil_eye_debuffs"][debuffed_actor]["duration"] <= 0:
+                debuff_data = encounter_state["evil_eye_debuffs"][debuffed_actor]
+                debuffed_actor.defense += debuff_data["defense_penalty"]
+                h_actions.remove_root(debuffed_actor, encounter_state)
+                if encounter_state["actors"].get(debuffed_actor, {}).get("KO") != True:
+                    report(f"{debuffed_actor.name}'s evil eye fades.")
+                actors_to_remove.append(debuffed_actor)
+
+        for actor_to_remove in actors_to_remove:
+            del encounter_state["evil_eye_debuffs"][actor_to_remove]
+
     return encounter_phase, encounter_state
 
 def party_turn (actor, encounter_state):
@@ -459,7 +550,7 @@ def check_melee_condition (encounter_phase, encounter_state):
         
     for item in encounter_state["actors"]:
         encounter_state["actors"][item]["melee"] = False
-    
+
     if party_melee or enemy_melee:
         report ("No melee.")
 

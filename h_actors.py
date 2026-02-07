@@ -1,4 +1,6 @@
 import random
+import os
+import pickle
 import h_encounter
 import h_actions
 
@@ -306,6 +308,7 @@ class Actor:
             self.reduction += armor.reduction
             self.power += armor.power
             self.armor = armor
+            self.features += list(getattr(armor, "features", []))
 
         else:
             self.skill -= self.armor.skill
@@ -314,6 +317,9 @@ class Actor:
             self.reduction -= self.armor.reduction
             self.insulation -= self.armor.insulation
             self.power -= self.armor.power
+            for item in getattr(self.armor, "features", []):
+                if item in self.features:
+                    self.features.remove(item)
             self.armor = None
 
             self.wear_armor(armor)
@@ -784,28 +790,28 @@ class Libertine(Actor):
             return
 
 
-class Erudite(Actor):
+class Esoterist(Actor):
     def __init__(self, name):
         super().__init__(name)
 
     def battlecry(self):
         randomizer = random.randint(0, 7)
         messages = [
-            "Observe and learn.",
-            "A lesson in consequence.",
-            "Reason yields to necessity.",
-            "Precision over passion.",
-            "Your stance is flawed.",
-            "Let logic prevail.",
-            "Every motion has purpose.",
-            "This is inevitable.",
+            "The hidden rites awaken.",
+            "Secrets answer my call.",
+            "The veil thins.",
+            "By the unseen law.",
+            "Your fate is written.",
+            "The abyss listens.",
+            "I invoke the old names.",
+            "Truth unfolds in shadow.",
         ]
         self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
     def pain(self):
         randomizer = random.randint(0, 3)
-        messages = ["Noted.", "Pain is data.", "Unpleasant.", "Adjusting."]
+        messages = ["A sign.", "The price is known.", "It stings.", "The rite endures."]
         self._express(f"{self.name}:\n{messages[randomizer]}")
         return
 
@@ -815,17 +821,17 @@ class Erudite(Actor):
             randomizer = random.randint(0, 3)
             if self.current_stamina < self.stamina // 2 + 1:
                 messages = [
-                    f"{self.name} exhales, recalculating the odds.",
-                    f"{self.name} narrows their eyes, analyzing.",
-                    f"{self.name} makes a small correction in footing.",
-                    f"{self.name} steadies their breath, focused.",
+                    f"{self.name} murmurs a ward under their breath.",
+                    f"{self.name} traces a sigil in the air.",
+                    f"{self.name} steadies their stance, eyes distant.",
+                    f"{self.name} whispers a name not meant for daylight.",
                 ]
             else:
                 messages = [
-                    f"{self.name} studies the enemy's rhythm.",
-                    f"{self.name} tilts their head, evaluating a weak point.",
-                    f"{self.name} moves with measured intent.",
-                    f"{self.name} remains calm, intent on efficiency.",
+                    f"{self.name} watches for the omen in each strike.",
+                    f"{self.name} moves with ritual precision.",
+                    f"{self.name} keeps a quiet, arcane focus.",
+                    f"{self.name} studies the foe like a cipher.",
                 ]
             self._express(f"{self.name}:\n{messages[randomizer]}")
             return
@@ -883,9 +889,64 @@ class Downtrodden(Actor):
 # ------------------------------------------------------------------
 
 
+def _save_dir():
+    return os.path.dirname(__file__)
+
+
+def save_party_to_file(party, filename):
+    if not filename:
+        filename = "party_save.pkl"
+    if not filename.endswith(".pkl"):
+        filename += ".pkl"
+    path = os.path.join(_save_dir(), filename)
+    with open(path, "wb") as handle:
+        pickle.dump(party, handle)
+    h_encounter.report(f"Party saved to {filename}.")
+
+
+def load_party_from_file(filename):
+    if not filename:
+        filename = "party_save.pkl"
+    if not filename.endswith(".pkl"):
+        filename += ".pkl"
+    path = os.path.join(_save_dir(), filename)
+    try:
+        with open(path, "rb") as handle:
+            party = pickle.load(handle)
+    except FileNotFoundError:
+        h_encounter.report(f"No saved party found at {filename}.")
+        return None
+    except Exception as exc:
+        h_encounter.report(f"Failed to load party: {exc}")
+        return None
+    return party
+
+
+def _ensure_shared_inventory(party):
+    if not party:
+        return
+    shared = getattr(party[0], "inventory", None)
+    if shared is None:
+        shared = Inventory()
+    for actor in party:
+        actor.inventory = shared
+
+
 def create_party():
     h_encounter.report("Create a new party.")
     party = []
+
+    load_answer = input("Load a saved party? (y/n)")
+    if load_answer.lower() == "y":
+        filename = input("Save file name (default: party_save.pkl): ").strip()
+        party = load_party_from_file(filename)
+        if party:
+            _ensure_shared_inventory(party)
+            for actor in party:
+                actor.refresh()
+            h_encounter.report("Saved party loaded.")
+            return party
+        h_encounter.report("Starting new party creation.")
 
     answer = input("Use a pre-made party? (y/n)")
 
@@ -895,7 +956,7 @@ def create_party():
             "Valeria": valeria,
             "Sonja": sonja,
             "Bosh": bosh,
-            "Thoth": thoth,
+            "Atlantes": atlantes,
             "Sera": sera,
         }
 
@@ -936,15 +997,15 @@ def create_party():
                 actor = premade_characters[choice]
                 
                 # Display character stats for confirmation
-                print("\n" + "="*50)
+                print("\n" + "="*60)
                 print(f"CHARACTER SUMMARY: {actor.name}")
-                print("="*50)
+                print("="*60)
                 print(f"Archetype: {actor.archetype.name}")
                 print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
                 print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
                 print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
                 print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
-                print("-"*50)
+                print("-"*60)
                 print(f"Stamina: {actor.stamina}")
                 print(f"Skill: {actor.skill}")
                 print(f"Defense: {actor.defense}")
@@ -956,7 +1017,7 @@ def create_party():
                 print(f"Damage Type: {actor.damage_type}")
                 if actor.features:
                     print(f"Features: {', '.join(actor.features)}")
-                print("="*50 + "\n")
+                print("="*60 + "\n")
                 
                 confirm = input("Add this character to your party? (y/n)")
                 if confirm.lower() == "y":
@@ -975,7 +1036,7 @@ def create_party():
                     "Valeria": valeria,
                     "Sonja": sonja,
                     "Bosh": bosh,
-                    "Thoth": thoth,
+                    "Atlantes": atlantes,
                     "Sera": sera,
                 }
                 available_characters = {k: v for k, v in premade_characters.items() if v not in party}
@@ -1010,15 +1071,15 @@ def create_party():
                 actor = premade_characters[choice]
 
                 # Display character stats for confirmation
-                print("\n" + "="*50)
+                print("\n" + "="*60)
                 print(f"CHARACTER SUMMARY: {actor.name}")
-                print("="*50)
+                print("="*60)
                 print(f"Archetype: {actor.archetype.name}")
                 print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
                 print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
                 print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
                 print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
-                print("-"*50)
+                print("-"*60)
                 print(f"Stamina: {actor.stamina}")
                 print(f"Skill: {actor.skill}")
                 print(f"Defense: {actor.defense}")
@@ -1030,7 +1091,7 @@ def create_party():
                 print(f"Damage Type: {actor.damage_type}")
                 if actor.features:
                     print(f"Features: {', '.join(actor.features)}")
-                print("="*50 + "\n")
+                print("="*60 + "\n")
 
                 confirm = input("Add this character to your party? (y/n)")
                 if confirm.lower() == "y":
@@ -1095,6 +1156,11 @@ def create_party():
     for actor in party:
         actor.refresh()
 
+    save_answer = input("Save this party to file? (y/n)")
+    if save_answer.lower() == "y":
+        filename = input("Save file name (default: party_save.pkl): ").strip()
+        save_party_to_file(party, filename)
+
     return party
 
 
@@ -1116,7 +1182,7 @@ def create_actor():
             "callous": Callous,
             "bully": Bully,
             "libertine": Libertine,
-            "erudite": Erudite,
+            "esoterist": Esoterist,
             "downtrodden": Downtrodden,
         }
 
@@ -1166,15 +1232,15 @@ def create_actor():
         actor.refresh()
 
         # Display character stats
-        print("\n" + "="*50)
+        print("\n" + "="*60)
         print(f"CHARACTER SUMMARY: {actor.name}")
-        print("="*50)
+        print("="*60)
         print(f"Archetype: {actor.archetype.name}")
         print(f"Armor: {actor.armor.name if actor.armor else 'None'}")
         print(f"Headgear: {actor.headgear.name if actor.headgear else 'None'}")
         print(f"Main Weapon: {actor.arms_slot1.name if actor.arms_slot1 else 'None'}")
         print(f"Secondary Weapon: {actor.arms_slot2.name if actor.arms_slot2 else 'None'}")
-        print("-"*50)
+        print("-"*60)
         print(f"Stamina: {actor.stamina}")
         print(f"Skill: {actor.skill}")
         print(f"Defense: {actor.defense}")
@@ -1186,7 +1252,7 @@ def create_actor():
         print(f"Damage Type: {actor.damage_type}")
         if actor.features:
             print(f"Features: {', '.join(actor.features)}")
-        print("="*50 + "\n")
+        print("="*60 + "\n")
         
         confirm = input("Confirm this character? (y/n)")
         if confirm.lower() == "y":
@@ -1276,6 +1342,21 @@ bastard_sword.power += 2
 bastard_sword.damage_type = "sharp"
 bastard_sword.arms_actions = {"stab": h_actions.stab}
 
+scepter = Arms("scepter", "blunt, power +1, smash.")
+scepter.power += 1
+scepter.fortune += 2
+scepter.damage_type = "blunt"
+scepter.arms_actions = {"smash": h_actions.smash}
+
+flail = Arms("flail", "blunt, power +2, skill +2, defense -2, charge, smash.")
+flail.power += 2
+flail.skill += 2
+flail.defense -= 2
+flail.speed = "slow"
+flail.damage_type = "blunt"
+flail.arms_actions = {"smash": h_actions.smash}
+flail.features = ["charge"]
+
 arms_list = {
     "shield and sword": shield_and_sword,
     "shield and club": shield_and_club,
@@ -1285,7 +1366,9 @@ arms_list = {
     "paired swords": paired_swords,
     "polearm": polearm,
     "bastard sword": bastard_sword,
-}
+    "scepter": scepter,
+    "flail": flail,
+    }
 
 # ------------------------------------------------------------------
 # armor
@@ -1302,10 +1385,15 @@ class Armor:
         self.fortune = 0
         self.reduction = 0
         self.insulation = 0
+        self.features = []
 
 
 bare = Armor("bare", "defense +2.")
 bare.defense += 2
+
+war_paint = Armor("war paint", "defense -2, juggernaut.")
+war_paint.features = ["juggernaut"]
+war_paint.defense -= 2
 
 cape = Armor("cape", "fortune +1, insulation +1.")
 cape.insulation += 1
@@ -1313,6 +1401,11 @@ cape.fortune += 1
 
 light_mail = Armor("light mail", "damage reduction +1")
 light_mail.reduction += 1
+
+bone_mail = Armor("bone mail", "damage reduction +1, fortune +1, defense -1")
+bone_mail.reduction += 1
+bone_mail.fortune += 1
+bone_mail.defense -= 1
 
 heavy_mail = Armor("heavy mail", "damage reduction +2, -2 insulation")
 heavy_mail.reduction += 2
@@ -1329,8 +1422,10 @@ brigandine.reduction += 1
 
 armor_list = {
     "bare": bare,
+    "war paint": war_paint,
     "cape": cape,
     "light mail": light_mail,
+    "bone mail": bone_mail,
     "heavy mail": heavy_mail,
     "suit of plate": suit_of_plate,
 }
@@ -1369,10 +1464,13 @@ black_hood = Headgear("black hood", "skill +1, fortune -1.")
 black_hood.skill += 1
 black_hood.fortune -= 1
 
+ritual_mask = Headgear("ritual mask", "mystic aim.")
+ritual_mask.features = ["mystic aim"]
+ritual_mask.insulation -= 1
+
 flaming_topknot = Headgear("flaming topknot", "resist pinning, defense -1.")
 flaming_topknot.features = ["resist pin"]
 flaming_topknot.defense -= 1
-
 
 headgear_list = {
     "winged helm": winged_helm,
@@ -1380,6 +1478,7 @@ headgear_list = {
     "moon circlet": moon_circlet,
     "black hood": black_hood,
     "flaming topknot": flaming_topknot,
+    "ritual mask": ritual_mask,
 }
 
 # ------------------------------------------------------------------
@@ -1421,20 +1520,20 @@ class FireBomb(Consumable):
 
 class DevilsDust(Consumable):
     def __init__(self):
-        super().__init__("devil's dust", "increases power by 2 and speed to fast for 4 turns")
+        super().__init__("devil's dust", "increases power by 2 and speed to fast for 8 turns")
     
     def use(self, actor, encounter_state):
         actor.current_power += 2
         actor.speed = "fast"
         h_encounter.report(f"{actor.name} inhales the devil's dust and feels more powerful!")
-        h_encounter.report(f"{actor.name} gains +2 power and fast speed for 4 turns.")
+        h_encounter.report(f"{actor.name} gains +2 power and fast speed for 8 turns.")
         
         # Track the buff duration
         if "devils_dust_buffs" not in encounter_state:
             encounter_state["devils_dust_buffs"] = {}
         
         encounter_state["devils_dust_buffs"][actor] = {
-            "duration": 4,
+            "duration": 8,
             "power_bonus": 2
         }
 
@@ -1575,9 +1674,9 @@ minion_disruptive.equip_weapons(dagger_and_whip)
 minion_disruptive.description = "a wiry cutpurse with a hooked whip and darting eyes"
 minion_aggressive = Minion("Gnash")
 minion_aggressive.logic = "aggressive"
-minion_aggressive.equip_weapons(bearded_axe)
-minion_aggressive.wear_armor(light_mail)
-minion_aggressive.description = "a hulking brute in patched mail, hefting a chipped bearded axe"
+minion_aggressive.equip_weapons(flail)
+minion_aggressive.wear_armor(brigandine)
+minion_aggressive.description = "a hulking brute in brigandine, swinging a spiked flail"
 minion_defensive = Minion("Bulwark")
 minion_defensive.logic = "defensive"
 minion_defensive.equip_weapons(shield_and_spear)
@@ -1585,8 +1684,9 @@ minion_defensive.wear_armor(heavy_mail)
 minion_defensive.description = "a steady guard in heavy mail, braced behind a spear and battered shield"
 minion_reactive = Minion("Skulk")
 minion_reactive.logic = "reactive"
-minion_reactive.equip_weapons(shield_and_club)
-minion_reactive.description = "a lean scrapper lurking behind a club and buckler"
+minion_reactive.equip_weapons(scepter)
+minion_reactive.wear_armor(bone_mail)
+minion_reactive.description = "a lean scrapper in bone mail, circling with a knotted scepter"
 
 minion_disruptive_2 = Minion("Vex")
 minion_disruptive_2.logic = "disruptive"
@@ -1602,8 +1702,8 @@ minion_aggressive_2.description = "a broad-shouldered marauder swinging a heavy 
 minion_defensive_2 = Minion("Ward")
 minion_defensive_2.logic = "defensive"
 minion_defensive_2.equip_weapons(shield_and_sword)
-minion_defensive_2.wear_armor(heavy_mail)
-minion_defensive_2.description = "a grim sentinel in heavy mail behind a battered shield and short blade"
+minion_defensive_2.wear_armor(brigandine)
+minion_defensive_2.description = "a grim sentinel in brigandine behind a battered shield and short blade"
 
 minion_reactive_2 = Minion("Mire")
 minion_reactive_2.logic = "reactive"
@@ -1682,8 +1782,8 @@ minion_ravager = Minion("Ravager")
 minion_ravager.logic = "aggressive"
 minion_ravager.give_archetype(furioso)
 minion_ravager.equip_weapons(bearded_axe)
-minion_ravager.wear_armor(bare)
-minion_ravager.description = "a frenzied berserker who charges with a chipped axe"
+minion_ravager.wear_armor(war_paint)
+minion_ravager.description = "a frenzied berserker daubed in war paint, charging with a chipped axe"
 
 minion_cutthroat = Minion("Cutthroat")
 minion_cutthroat.logic = "disruptive"
@@ -1693,11 +1793,11 @@ minion_cutthroat.wear_armor(cape)
 minion_cutthroat.description = "a swaggering rogue who fights dirty from the shadows"
 
 minion_occultist = Minion("Occultist")
-minion_occultist.logic = "reactive"
+minion_occultist.logic = "disruptive"
 minion_occultist.give_archetype(diabolist)
 minion_occultist.equip_weapons(polearm)
-minion_occultist.wear_armor(brigandine)
-minion_occultist.description = "a grim summoner in patched brigandine, warding with a polearm"
+minion_occultist.wear_armor(suit_of_plate)
+minion_occultist.description = "a grim summoner in patched suit of plate, warding with a polearm"
 
 minion_dragoon = Minion("Dragoon")
 minion_dragoon.logic = "aggressive"
@@ -1733,12 +1833,12 @@ sonja.wear_headgear(flaming_topknot)
 sonja.equip_weapons(paired_swords)
 sonja.arms_slot2 = dagger_and_whip
 
-thoth = Erudite("Thoth")
-thoth.give_archetype(diabolist)
-thoth.wear_armor(cape)
-thoth.wear_headgear(moon_circlet)
-thoth.equip_weapons(dagger_and_whip)
-thoth.arms_slot2 = shield_and_sword
+atlantes = Esoterist("Atlante")
+atlantes.give_archetype(diabolist)
+atlantes.wear_armor(cape)
+atlantes.wear_headgear(moon_circlet)
+atlantes.equip_weapons(dagger_and_whip)
+atlantes.arms_slot2 = shield_and_sword
 
 sera = Callous("Sera")
 sera.give_archetype(herald)
@@ -1749,5 +1849,5 @@ sera.arms_slot2 = shield_and_spear
 
 
 def get_default_party():
-    """Returns the default party with Valeria, Sonja, Bosh, Thoth, and Sera."""
-    return [valeria, sonja, bosh, thoth]
+    """Returns the default party with Valeria, Sonja, Bosh, Atlantes, and Sera."""
+    return [valeria, sonja, bosh, atlantes]

@@ -11,32 +11,32 @@ def main ():
 
 def show_title_and_intro():
     """Display the game title and optional intro text."""
-    print("\n" + "="*60)
-    print("HALL OF THE MOUNTAIN KING".center(60))
-    print("v0.11".center(60))
-    print("2026".center(60))
-    print("="*60 + "\n")
+    print("\n" + "="*80)
+    print("HALL OF THE MOUNTAIN KING".center(80))
+    print("v0.12".center(80))
+    print("2026".center(80))
+    print("="*80 + "\n")
     input("Press Enter to continue...")
     
     skip = input("Skip intro? (y/n): ")
     
     if skip.lower() != "y":
-        intro_text = """
-Far away, in a land caught between time and space,\nwhere the secrets of life and death lay,
-
-there is a castle of stone where the mountain king roams.
-
-His deep, dark eyes keep watch on his kingdom and the mysteries that sleep safe inside.
-
-His hall, his towers of stone shall not be overthrown for eternity.
-
-It is guarded by the king, insanity and the power that it brings. 
-
-But he's not the only one lost inside, forever hidden from the sun.
-
-Madness reigns in the hall of the mountain king.
-        """
-        h_encounter.report(intro_text)
+        intro_lines = [
+            "Far away, in a land caught between time and space,",
+            "where the secrets of life and death lay,",
+            "there is a castle of stone where the mountain king roams.",
+            "His deep, dark eyes keep watch on his kingdom,",
+            "and the mysteries that sleep safe inside.",
+            "His hall, his towers of stone shall not be overthrown",
+            "for eternity.",
+            "It is guarded by the king, insanity and the power",
+            "that it brings.",
+            "But he's not the only one lost inside,",
+            "forever hidden from the sun.",
+            "Madness reigns in the hall of the mountain king.",
+        ]
+        for line in intro_lines:
+            h_encounter.report(line, pause=True)
 
 def new_game():
     game_state = setup_gamestate()
@@ -114,10 +114,22 @@ def show_tutorial():
         "- Heathen: skirmisher with prowl and dirty trick.\n"
         "- Diabolist: caster who risks fortune for diablerie."
     )
+    h_encounter.report(
+        "Special features & equipment:\n"
+        "- Features can come from archetypes or gear.\n"
+        "- Riposte: if you are Guarding and an enemy attacks you in melee, you may counter-attack.\n"
+        "- Mystic aim: attacks use Fortune instead of Skill for tests.\n"
+        "- Charge: if you start outside melee and attack a target without Reach, gain +1d4 damage.\n"
+        "- Reach: you can attack without entering melee; also blocks enemy charge bonuses.\n"
+        "- Resist pin: 75% chance to ignore being pinned.\n"
+        "- Quick draw: swapping weapons does not consume your action (you can act again).\n"
+        "- Savagery: when below half stamina, become enraged (+2 power, +2 reduction, fast speed, always vulnerable).\n"
+        "- Juggernaut: ignores daze effects (also granted temporarily by some spells)."
+    )
 
 def run_game (game_state, party):
 
-    h_encounter.report(f"You've made your way to the halls of the mountain king.\n\nYou stand in the feeble sun that does not give warmth.\n\nThe bleached walls are lined with faded murals, their stories lost to time.\n\nWhy have you come? Perhaps it doesn't matter now...")
+    h_encounter.report(f"You've made your way to the halls of the mountain king.\n\nYou stand in the feeble sun before the bleached walls lined with faded murals, their stories lost to time.\n\nWhy have you come?\nPerhaps it doesn't matter now...")
 
     current = game_state.get("start_scene", "100")
     while current != "END":
@@ -144,7 +156,7 @@ def run_game (game_state, party):
                 remaining.remove(chosen)
             party = new_order
         current, party = h_scenario.scenario_list[current](game_state, party)
-    h_encounter.major_report ("MADNESS REIGNS IN THE HALL OF THE MOUNTAIN KING".center(40))
+    h_encounter.major_report ("MADNESS REIGNS IN THE HALL OF THE MOUNTAIN KING".center(80))
 
 # ---------------------------------------------------------------------------
 # RUNNING
