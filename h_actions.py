@@ -28,6 +28,14 @@ SPELLS = {
     "diabolic weapon": {
         "rank": 8,
         "description": "diabolic weapon: empower an ally's strikes for 8 turns.",
+    },
+    "misfortune": {
+        "rank": 8,
+        "description": "misfortune: curse a target, reducing fortune and insulation for 8 turns.",
+    },
+    "barbed halo": {
+        "rank": 8,
+        "description": "barbed halo: melee attackers suffer retaliatory damage for 8 turns.",
     }
 } 
 
@@ -150,13 +158,16 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
         return choice_name
 
     if logic == "disruptive":
-        choice = weighted_choice(
-            primary=["hide", "skirmish", "prowl"],
-            secondary=["trip", "smash", "fight"],
-            conditional=["dirty trick", "diablerie"],
-            condition_met=actor_momentum or actor_melee,
-            fallback=["retreat", "guard", "block", "fight"],
-        )
+        if actor_momentum and "fight" in possible_actions:
+            choice = "fight"
+        else:
+            choice = weighted_choice(
+                primary=["hide", "skirmish", "prowl"],
+                secondary=["trip", "smash", "fight"],
+                conditional=["dirty trick", "diablerie"],
+                condition_met=actor_momentum or actor_melee,
+                fallback=["retreat", "guard", "block", "fight"],
+            )
 
     elif logic == "aggressive":
         choice = weighted_choice(
@@ -183,6 +194,15 @@ def enemy_action_logic(actor, encounter_state, possible_actions):
             conditional=["dirty trick", "decisive order"],
             condition_met=actor_momentum and actor_melee,
             fallback=["guard", "retreat", "fight"],
+        )
+
+    elif logic == "sorcerer":
+        choice = weighted_choice(
+            primary=["diablerie", "skirmish"],
+            secondary=["guard", "retreat", "fight"],
+            conditional=["diablerie"],
+            condition_met=actor_momentum or not actor_melee,
+            fallback=["guard", "fight", "block"],
         )
 
     else:
@@ -292,7 +312,7 @@ def root_blocks_action(
 
     return False
 
-def choose_target (dictionary):
+def choose_target (dictionary, encounter_state=None):
 
     options_index = {}
     options_counter = 0
@@ -310,6 +330,8 @@ def choose_target (dictionary):
         print (text1+text2.center(19)+status_text)
         options_index [options_counter] = key
 
+    print("0.\tStart over")
+
     if options_counter == 0:
         return None
 
@@ -317,6 +339,11 @@ def choose_target (dictionary):
         choice_index = int(input("choose option."))
     except ValueError:
         choice_index = 1
+
+    if choice_index == 0:
+        if encounter_state is not None:
+            encounter_state["action_failed"] = True
+        return None
 
     if choice_index > options_counter:
         choice_index = options_counter
@@ -406,7 +433,7 @@ def get_target (actor, encounter_state):
         return None
 
     if actor.logic is not None:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
     else:
         target = next(iter(available_targets))
 
@@ -440,6 +467,34 @@ def get_attack_mitigation(attacker, target, encounter_state, default_mitigation)
     return default_mitigation
 
 
+def apply_barbed_halo(attacker, target, encounter_state):
+    buffs = encounter_state.get("barbed_halo_buffs")
+    if not buffs:
+        return encounter_state
+
+    halo = buffs.get(target)
+    if not halo:
+        return encounter_state
+
+    if encounter_state["actors"].get(target, {}).get("KO") == True:
+        return encounter_state
+
+    if encounter_state["actors"].get(attacker, {}).get("KO") == True:
+        return encounter_state
+
+    if not (encounter_state["actors"][attacker].get("melee") and encounter_state["actors"][target].get("melee")):
+        return encounter_state
+
+    damage_bonus = halo.get("damage_bonus", 0)
+    halo_damage = random.randint(1, 4) + damage_bonus
+    if halo_damage <= 0:
+        return encounter_state
+
+    h_encounter.report(f"{attacker.name} is cut by {target.name}'s barbed halo.")
+    damage(attacker, encounter_state, halo_damage, attacker.current_insulation, "hellfire")
+    return encounter_state
+
+
 def fight (actor, encounter_state):
     if root_blocks_action(actor, encounter_state, enter_melee=True):
         return encounter_state
@@ -449,7 +504,10 @@ def fight (actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
+
+    if not target:
+        return encounter_state
 
     attack_damage = actor.current_power + random.randint (1, 4)
 
@@ -486,6 +544,8 @@ def fight (actor, encounter_state):
             cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
+    apply_barbed_halo(actor, target, encounter_state)
+
     return encounter_state
 
 def smash (actor, encounter_state):
@@ -497,7 +557,10 @@ def smash (actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
+
+    if not target:
+        return encounter_state
     
     attack_damage = actor.current_power + random.randint (1, 4)
 
@@ -537,6 +600,8 @@ def smash (actor, encounter_state):
         cause_vulnerable (actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
+    apply_barbed_halo(actor, target, encounter_state)
+
     return encounter_state
 
 def hack_and_slash (actor, encounter_state):
@@ -551,7 +616,10 @@ def hack_and_slash (actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
+
+    if not target:
+        return encounter_state
     
     attack_damage = actor.current_power + random.randint (1, 4)
 
@@ -591,6 +659,8 @@ def hack_and_slash (actor, encounter_state):
         cause_vulnerable (actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
+    apply_barbed_halo(actor, target, encounter_state)
+
     return encounter_state
 
 def trip (actor, encounter_state):
@@ -602,7 +672,10 @@ def trip (actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
+
+    if not target:
+        return encounter_state
 
     if "reach" not in actor.features:
         encounter_state["actors"][actor]["melee"] = True
@@ -636,6 +709,8 @@ def trip (actor, encounter_state):
             cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
 
+    apply_barbed_halo(actor, target, encounter_state)
+
     return encounter_state
 
 
@@ -657,7 +732,7 @@ def dirty_trick(actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
 
     if not target:
         return encounter_state
@@ -697,6 +772,8 @@ def dirty_trick(actor, encounter_state):
         if encounter_state["actors"][target].get("guard") == True:
             cause_vulnerable(actor, encounter_state)
         riposte_trigger (actor, encounter_state, target)
+
+    apply_barbed_halo(actor, target, encounter_state)
 
     return encounter_state
 
@@ -781,7 +858,7 @@ def diablerie(actor, encounter_state):
         if actor.logic != None:
             target = logic_target(available_targets, actor, encounter_state)
         else:
-            target = choose_target(available_targets)
+            target = choose_target(available_targets, encounter_state)
         if not target:
             return encounter_state
         power = random.randint(spell["min_damage"], spell["max_damage"]) + (3 * rank_steps)
@@ -900,7 +977,7 @@ def diablerie(actor, encounter_state):
         if actor.logic != None:
             target = random.choice(list(available_targets.keys())) if available_targets else None
         else:
-            target = choose_target(available_targets)
+            target = choose_target(available_targets, encounter_state)
 
         if not target:
             return encounter_state
@@ -924,12 +1001,60 @@ def diablerie(actor, encounter_state):
             f"the {rank_names[rank]} binds a diabolic weapon to {target.name}, granting +{power_bonus} power for 8 turns."
         )
 
+    elif spell_name == "misfortune":
+        available_targets = filter_targets(actor, encounter_state, ignore_block=True)
+        if actor.logic != None:
+            target = logic_target(available_targets, actor, encounter_state)
+        else:
+            target = choose_target(available_targets, encounter_state)
+        if not target:
+            return encounter_state
+
+        fortune_penalty = 4 + (2 * rank_steps)
+        insulation_penalty = 2 + (2 * rank_steps)
+
+        if "misfortune_debuffs" not in encounter_state:
+            encounter_state["misfortune_debuffs"] = {}
+
+        if target in encounter_state["misfortune_debuffs"]:
+            previous = encounter_state["misfortune_debuffs"][target]
+            target.current_fortune += previous["fortune_penalty"]
+            target.current_insulation += previous["insulation_penalty"]
+
+        target.current_fortune -= fortune_penalty
+        target.current_insulation -= insulation_penalty
+
+        encounter_state["misfortune_debuffs"][target] = {
+            "duration": 8,
+            "fortune_penalty": fortune_penalty,
+            "insulation_penalty": insulation_penalty,
+        }
+
+        h_encounter.report(
+            f"the {rank_names[rank]} curses {target.name} with misfortune, reducing fortune by {fortune_penalty} and insulation by {insulation_penalty} for 8 turns."
+        )
+
+    elif spell_name == "barbed halo":
+        damage_bonus = 2 * rank_steps
+
+        if "barbed_halo_buffs" not in encounter_state:
+            encounter_state["barbed_halo_buffs"] = {}
+
+        encounter_state["barbed_halo_buffs"][actor] = {
+            "duration": 8,
+            "damage_bonus": damage_bonus,
+        }
+
+        h_encounter.report(
+            f"the {rank_names[rank]} crowns {actor.name} in a barbed halo for 8 turns."
+        )
+
     elif spell_name == "grasp of the dead":
         available_targets = filter_targets(actor, encounter_state, ignore_block=True)
         if actor.logic != None:
             target = logic_target(available_targets, actor, encounter_state)
         else:
-            target = choose_target(available_targets)
+            target = choose_target(available_targets, encounter_state)
         if not target:
             return encounter_state
 
@@ -972,14 +1097,14 @@ def prowl(actor, encounter_state):
         if actor.logic != None:
             target = logic_target(available_targets, actor, encounter_state)
         else:
-            target = choose_target(available_targets)
+            target = choose_target(available_targets, encounter_state)
     else:
         # behave like a normal fight selection
         available_targets = filter_targets(actor, encounter_state)
         if actor.logic != None:
             target = logic_target(available_targets, actor, encounter_state)
         else:
-            target = choose_target(available_targets)
+            target = choose_target(available_targets, encounter_state)
 
     if not target:
         return encounter_state
@@ -1029,7 +1154,10 @@ def stab (actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
+
+    if not target:
+        return encounter_state
 
     
     attack_damage = actor.current_power + random.randint (1, 4)
@@ -1085,7 +1213,10 @@ def skirmish (actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
+
+    if not target:
+        return encounter_state
 
     attack_damage = random.randint (1, 6)
 
@@ -1203,7 +1334,7 @@ def aid(actor, encounter_state):
     if actor.logic != None:
         target = logic_target(available_targets, actor, encounter_state)
     else:
-        target = choose_target(available_targets)
+        target = choose_target(available_targets, encounter_state)
 
     if not target:
         return encounter_state
@@ -1279,7 +1410,7 @@ def decisive_order(actor, encounter_state):
     if actor.logic != None:
         target = logic_target(allies, actor, encounter_state)
     else:
-        target = choose_target(allies)
+        target = choose_target(allies, encounter_state)
 
     if not target:
         encounter_state["actors"][actor]["momentum"] = False
@@ -1331,7 +1462,7 @@ def deliverance(actor, encounter_state):
     if actor.logic != None:
         target = logic_target(allies, actor, encounter_state)
     else:
-        target = choose_target(allies)
+        target = choose_target(allies, encounter_state)
 
     if not target:
         encounter_state["actors"][actor]["momentum"] = False

@@ -980,7 +980,7 @@ def create_party():
                     options_counter += 1
                     text1 = f"{options_counter}.\t"
                     text2 = f"{key}"
-                    print(text1 + text2.center(19))
+                    print(text1 + text2.center(17))
                     options_index[options_counter] = key
                 
                 try:
@@ -1054,7 +1054,7 @@ def create_party():
                     options_counter += 1
                     text1 = f"{options_counter}.\t"
                     text2 = f"{key}"
-                    print(text1 + text2.center(19))
+                    print(text1 + text2.center(17))
                     options_index[options_counter] = key
 
                 try:
@@ -1123,7 +1123,7 @@ def create_party():
         text1 = f"{options_counter}.\t"
         text2 = f"{key}"
         text3 = f"{item.description}"
-        print(text1 + text2.center(19) + text3)
+        print(text1 + text2.center(17) + text3)
         options_index[options_counter] = key
 
     try:
@@ -1192,7 +1192,7 @@ def create_actor():
             options_counter += 1
             text1 = f"{options_counter}.\t"
             text2 = f"{key}"
-            print(text1 + text2.center(19))
+            print(text1 + text2.center(17))
             options_index[options_counter] = key
 
         try:
@@ -1757,7 +1757,7 @@ champion_3.wear_headgear(black_hood)
 champion_3.description = "a duelist in a black hood, striking with twin blades"
 
 champion_4 = Champion("Talan")
-champion_4.logic = "reactive"
+champion_4.logic = "sorcerer"
 champion_4.give_archetype(diabolist)
 champion_4.equip_weapons(polearm)
 champion_4.wear_armor(cape)
@@ -1793,7 +1793,7 @@ minion_cutthroat.wear_armor(cape)
 minion_cutthroat.description = "a swaggering rogue who fights dirty from the shadows"
 
 minion_occultist = Minion("Occultist")
-minion_occultist.logic = "disruptive"
+minion_occultist.logic = "sorcerer"
 minion_occultist.give_archetype(diabolist)
 minion_occultist.equip_weapons(polearm)
 minion_occultist.wear_armor(suit_of_plate)

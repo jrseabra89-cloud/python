@@ -22,9 +22,9 @@ def disable_interactive_reports():
 
 
 def report(message, pause=None):
-    print("- "*30 + "\n")
+    print("--"*30 + "\n")
     print(message.center(60))
-    print("\n" + "- "*30)
+    print("\n" + "--"*30)
     # If pause is None, follow the module-level `interactive_reports` flag.
     if pause is None:
         if interactive_reports:
@@ -396,6 +396,19 @@ def round_phase (encounter_phase, encounter_state):
         for actor_to_remove in actors_to_remove:
             del encounter_state["diabolic_weapon_buffs"][actor_to_remove]
 
+    # Decrement barbed halo buff durations
+    if "barbed_halo_buffs" in encounter_state:
+        actors_to_remove = []
+        for buffed_actor in encounter_state["barbed_halo_buffs"]:
+            encounter_state["barbed_halo_buffs"][buffed_actor]["duration"] -= 1
+            if encounter_state["barbed_halo_buffs"][buffed_actor]["duration"] <= 0:
+                if encounter_state["actors"].get(buffed_actor, {}).get("KO") != True:
+                    report(f"{buffed_actor.name}'s barbed halo fades.")
+                actors_to_remove.append(buffed_actor)
+
+        for actor_to_remove in actors_to_remove:
+            del encounter_state["barbed_halo_buffs"][actor_to_remove]
+
     # Decrement evil eye debuff durations
     if "evil_eye_debuffs" in encounter_state:
         actors_to_remove = []
@@ -411,6 +424,22 @@ def round_phase (encounter_phase, encounter_state):
 
         for actor_to_remove in actors_to_remove:
             del encounter_state["evil_eye_debuffs"][actor_to_remove]
+
+    # Decrement misfortune debuff durations
+    if "misfortune_debuffs" in encounter_state:
+        actors_to_remove = []
+        for debuffed_actor in encounter_state["misfortune_debuffs"]:
+            encounter_state["misfortune_debuffs"][debuffed_actor]["duration"] -= 1
+            if encounter_state["misfortune_debuffs"][debuffed_actor]["duration"] <= 0:
+                debuff_data = encounter_state["misfortune_debuffs"][debuffed_actor]
+                debuffed_actor.current_fortune += debuff_data["fortune_penalty"]
+                debuffed_actor.current_insulation += debuff_data["insulation_penalty"]
+                if encounter_state["actors"].get(debuffed_actor, {}).get("KO") != True:
+                    report(f"{debuffed_actor.name}'s misfortune fades.")
+                actors_to_remove.append(debuffed_actor)
+
+        for actor_to_remove in actors_to_remove:
+            del encounter_state["misfortune_debuffs"][actor_to_remove]
 
     return encounter_phase, encounter_state
 
